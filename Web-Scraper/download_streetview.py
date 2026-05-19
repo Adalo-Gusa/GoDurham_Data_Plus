@@ -23,6 +23,7 @@ for _, row in stops.iterrows():
         params = {
             "size": "640x640",
             "location": f"{lat},{lon}",
+            "radius": 25,
             "heading": heading,
             "pitch": 0,
             "fov": 90,
