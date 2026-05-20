@@ -5,7 +5,7 @@ import pandas as pd
 
 stops = pd.read_csv("Altered 2026 GoDurham Bus Stop List.csv")
 stops = stops.head(10)
-with open("api_key.txt", "r") as f:
+with open(".api/api_key.txt", "r") as f:
     api_key = f.read().strip()
 
 os.makedirs("images", exist_ok=True)
