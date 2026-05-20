@@ -6,6 +6,10 @@ import pandas as pd
 
 stops = pd.read_csv("Altered 2026 GoDurham Bus Stop List.csv")
 
+stops = stops.sort_values("Stop Code")
+
+stops = stops.head(10)
+
 
 print(f"Running on {len(stops)} stops")
 
@@ -14,6 +18,13 @@ with open(".api/api_key.txt", "r") as f:
 
 os.makedirs("images_metadata", exist_ok=True)
 
+def clean_filename(text):
+    text = str(text).strip()
+    bad_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '(', ')']
+    for char in bad_chars:
+        text = text.replace(char, "")
+    text = text.replace(" ", "_")
+    return text
 
 def get_metadata(lat, lon):
     url = "https://maps.googleapis.com/maps/api/streetview/metadata"
@@ -89,7 +100,8 @@ for _, row in stops.iterrows():
         print(f"Failed {stop_code}: image request error")
         continue
 
-    filename = f"images_metadata/{stop_code}_{image_date}.jpg"
+    safe_stop_name = clean_filename(stop_name)
+    filename = f"images_metadata/{stop_code}_{safe_stop_name}_{image_date}_heading-{round(heading)}.jpg"
 
     with open(filename, "wb") as f:
         f.write(response.content)
