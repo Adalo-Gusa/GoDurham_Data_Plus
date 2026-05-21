@@ -2,6 +2,5 @@
 .api/
 **/api_key.txt
 images/
-images_metadata/
 __pycache__/
 .DS_Store
