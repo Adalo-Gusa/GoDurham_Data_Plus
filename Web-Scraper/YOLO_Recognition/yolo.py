@@ -1,26 +1,18 @@
-pip install inference-sdk
-
-# 1. Import the library
+import os
 from inference_sdk import InferenceHTTPClient
 
-# 2. Connect to your workspace
-client = InferenceHTTPClient(
-  api_url="https://serverless.roboflow.com",
-  api_key="VT3lDj8yZcgP7G23yPB2"
+with open("/Users/sebastiansanchez121/data/roboflow_api.txt", "r") as f:
+    api_key = f.read().strip()
+
+CLIENT = InferenceHTTPClient(
+    api_url="https://serverless.roboflow.com",
+    api_key=api_key
 )
 
-# 3. Run your workflow on an image
-result = client.run_workflow(
-  workspace_name="sebastian-muvf7",
-  workflow_id="general-segmentation-api",
-  images={
-    "image": "YOUR_IMAGE.jpg"  # Path to your image file
-  },
-  parameters={
-    "classes": "sign, shelter"
-  },
-  use_cache=True  # cache workflow definition for 15 minutes
+result = CLIENT.infer(
+    "/Users/sebastiansanchez121/data/Web-Scraper/images_metadata/1072_Old_Chapel_Hill_Rd_at_Garrett_Rd_EB_2025-01_center_heading-102.jpg",
+    model_id="bus-stop-afloz/1"
 )
 
-# 4. Get your results
 print(result)
+

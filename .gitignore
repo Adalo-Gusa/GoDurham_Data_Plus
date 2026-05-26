@@ -5,3 +5,4 @@ images/
 __pycache__/
 .DS_Store
 **/vision_api.txt
+**/roboflow_api.txt
