@@ -15,7 +15,7 @@ from google.genai import types
 # CONFIG
 # ============================================================
 
-INPUT_DIR = Path("images")          # folder containing all left/center/right images
+INPUT_DIR = Path("images_metadata")          # folder containing all left/center/right images
 FINAL_IMAGES_DIR = Path("final_images")
 OUTPUT_JSON = Path("bus_stop_results.json")
 OUTPUT_CSV = Path("bus_stop_results.csv")
@@ -41,7 +41,7 @@ def load_api_key(path: str) -> str:
 
 client = genai.Client(
     api_key=load_api_key(
-        "/Users/sebastiansanchez121/data/Gemini_Recognition/gemini_key.txt"
+        "/Users/sebastiansanchez121/data/Web-Scraper/Gemini_Recognition/key_gemini.txt"
     )
 )
 
