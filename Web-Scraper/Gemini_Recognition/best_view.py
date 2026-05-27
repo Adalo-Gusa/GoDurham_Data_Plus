@@ -6,7 +6,7 @@ from pathlib import Path
 from collections import defaultdict
 
 from google import genai
-from google.genai import types
+from google.genai import types # type: ignore
 
 
 # -----------------------------

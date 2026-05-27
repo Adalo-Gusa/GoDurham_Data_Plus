@@ -2,7 +2,7 @@ import os
 import json
 from pathlib import Path
 from google import genai
-from google.genai import types
+from google.genai import types # type: ignore
 
 client = genai.Client(
     enterprise=True,
