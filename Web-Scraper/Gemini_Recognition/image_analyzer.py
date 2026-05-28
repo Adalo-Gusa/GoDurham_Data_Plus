@@ -1,3 +1,4 @@
+import os
 import re
 import csv
 import json
@@ -14,18 +15,28 @@ from google.genai import types
 # CONFIG
 # ============================================================
 
-INPUT_DIR = Path("images_metadata")
+INPUT_DIR = Path("images_metadata")          # folder containing all left/center/right images
 FINAL_IMAGES_DIR = Path("final_images")
-
-# Use new filenames so you do not mix old results with the updated prompt/schema.
-OUTPUT_JSON = Path("bus_stop_results_with_visibility.json")
-OUTPUT_CSV = Path("bus_stop_results_with_visibility.csv")
+OUTPUT_JSON = Path("bus_stop_results.json")
+OUTPUT_CSV = Path("bus_stop_results.csv")
 
 MODEL = "gemini-3.5-flash"
 
-# Use an integer for testing, e.g. 10 or 50.
-# Use None to run all stops.
-MAX_STOPS = 10
+# If using Google Cloud / Vertex / Agent Platform:
+def load_api_key(path: str) -> str:
+    key_path = Path(path)
+
+    if not key_path.exists():
+        raise FileNotFoundError(
+            f"Could not find API key file: {key_path}"
+        )
+
+    api_key = key_path.read_text(encoding="utf-8").strip()
+
+    if not api_key:
+        raise ValueError(f"API key file is empty: {key_path}")
+
+    return api_key
 
 client = genai.Client(
     vertexai=True,
@@ -33,11 +44,13 @@ client = genai.Client(
     location="global",
 )
 
+
+
 FINAL_IMAGES_DIR.mkdir(exist_ok=True)
 
 
 # ============================================================
-# PARSER
+# YOUR PARSER
 # ============================================================
 
 def parse_stop_id_and_view(path: Path):
@@ -52,7 +65,6 @@ def parse_stop_id_and_view(path: Path):
     stop_id = match.group(1)
 
     # Detect view only from the actual view tag before "_heading"
-    # This avoids mistaking a stop name like "Shopping_Center" for center view.
     view_match = re.search(r"_(left|center|centre|right)_heading", filename)
 
     if not view_match:
@@ -70,16 +82,14 @@ def parse_stop_id_and_view(path: Path):
 
 
 # ============================================================
-# GROUP IMAGES BY STOP
+# GROUP IMAGES BY 4-DIGIT STOP CODE
 # ============================================================
 
 def group_images_by_stop(input_dir: Path):
-    valid_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+    image_paths = []
 
-    image_paths = [
-        path for path in input_dir.rglob("*")
-        if path.is_file() and path.suffix.lower() in valid_extensions
-    ]
+    for ext in ["*.jpg", "*.jpeg", "*.png", "*.webp"]:
+        image_paths.extend(input_dir.rglob(ext))
 
     grouped = defaultdict(dict)
 
@@ -113,32 +123,17 @@ def group_images_by_stop(input_dir: Path):
 PROMPT = """
 You are analyzing bus stop images for transit stop accessibility inventory.
 
-Each bus stop has three candidate image views:
+Each bus stop has three image views:
 - left
 - center
 - right
 
-First, determine whether the image trio appears to show an actual bus stop or bus stop area.
+First, determine whether the image trio appears to show a bus stop or bus stop area.
 
 Set bus_stop_visible:
-- "Yes" only if at least one image clearly shows transit-specific evidence of a bus stop, such as:
-  - a bus stop sign
-  - a transit route sign
-  - a bus shelter
-  - a bench clearly associated with a bus stop
-  - a marked bus stop pole/signpost with visible transit/bus-stop marking
-  - a dedicated boarding pad or landing area clearly designed for bus boarding
-  - a bus stop sign visible near the curb or roadside
-
-- "No" if the image only shows grass, road, curb, sidewalk, trees, generic poles, bollards, cones, utility markers, construction markers, mailboxes, driveway markers, or unmarked roadside objects.
-
-- "No" if the only possible evidence is a plain colored post, orange/white post, yellow/blue post, bollard, stake, cone, utility marker, or generic signpost with no visible transit/bus-stop marking.
-
-- "Unclear" if there may be a bus stop but the evidence is blocked, too far away, blurry, or not readable.
-
-Important:
-Do not mark bus_stop_visible = "Yes" based only on a generic roadside post or marker.
-A bus stop must have clear transit-specific evidence, not just a pole near the road.
+- "Yes" if at least one of the three images clearly shows a bus stop sign, boarding/landing area, shelter, bench, route sign, bus stop pole, or obvious bus stop zone.
+- "No" if none of the three images appear to show a bus stop or relevant stop area.
+- "Unclear" if the scene may show the stop area but visual evidence is limited, blocked, blurry, too far away, or ambiguous.
 
 Set bus_stop_visibility_confidence from 0.0 to 1.0 based on how confident you are in the bus_stop_visible label.
 
@@ -152,22 +147,12 @@ Then classify the bus stop using the best selected image only.
 Use only visible evidence. Do not guess hidden features.
 If a field is not applicable, use "NA".
 If uncertain, choose the most visually supported option and lower the confidence.
+Count only clearly visible objects at or immediately around the bus stop.
 
-Pay special attention to small amenities near the curb, sidewalk, landing area, or bus stop zone, including benches, trash cans, shelters, and lighting. These amenities may appear small, distant, partially blocked, or blended with railings, fences, bike racks, parked cars, or other street furniture.
-
-Count amenities if they are reasonably visible and appear to be associated with the bus stop area.
-Do not count distant unrelated objects across a parking lot, across the street, or far away from the stop.
-
-If bus_stop_visible is "No":
+If bus_stop_visible is "No" or "Unclear":
 - still choose the best available view
-- classify visible attributes conservatively
-- do not infer a bus stop from grass, curb, sidewalk, or a generic pole alone
-- explain in notes what object may have been confused for a bus stop and why it is not sufficient evidence
-
-If bus_stop_visible is "Unclear":
-- still choose the best available view
-- classify visible attributes as best as possible
-- explain in notes what evidence is missing or ambiguous
+- still classify visible attributes as best as possible
+- explain the concern in notes
 
 Definitions:
 
@@ -232,15 +217,7 @@ A bench with a back panel but no roof should be counted as a bench, not a shelte
 Integer count.
 
 0 means no visible bench.
-Count the number of benches visible at or immediately around the bus stop.
-
-A bench should be counted if it has a recognizable seat surface, backrest, legs, or bench-like frame, even if it is small, partially obscured, or visually blended with nearby objects.
-
-Count a bench if it appears to be public seating associated with the bus stop, sidewalk, shelter, landing area, or boarding zone.
-
-Do not confuse benches with railings, fences, bike racks, barriers, signposts, or low walls. However, if the object clearly has a seat/back structure or public seating shape, count it as a bench.
-
-If a bench is visible but partially blocked, still count it if the seat or back structure is reasonably clear.
+Count the number of benches visible at or immediately around the stop.
 
 7. trash_can_number
 Integer count.
@@ -282,6 +259,8 @@ response_schema = {
         "selected_image_filename": {
             "type": "string"
         },
+
+        # New bus stop visibility check
         "bus_stop_visible": {
             "type": "string",
             "enum": ["Yes", "No", "Unclear"],
@@ -289,6 +268,7 @@ response_schema = {
         "bus_stop_visibility_confidence": {
             "type": "number",
         },
+
         "stop_surface": {
             "type": "string",
             "enum": ["Grass", "Concrete"],
@@ -328,16 +308,36 @@ response_schema = {
         "confidence": {
             "type": "object",
             "properties": {
-                "best_view": {"type": "number"},
-                "bus_stop_visible": {"type": "number"},
-                "stop_surface": {"type": "number"},
-                "landing_type": {"type": "number"},
-                "sidewalk_connection": {"type": "number"},
-                "landing_pad": {"type": "number"},
-                "shelter_number": {"type": "number"},
-                "bench_number": {"type": "number"},
-                "trash_can_number": {"type": "number"},
-                "street_lighting": {"type": "number"},
+                "best_view": {
+                    "type": "number"
+                },
+                "bus_stop_visible": {
+                    "type": "number"
+                },
+                "stop_surface": {
+                    "type": "number"
+                },
+                "landing_type": {
+                    "type": "number"
+                },
+                "sidewalk_connection": {
+                    "type": "number"
+                },
+                "landing_pad": {
+                    "type": "number"
+                },
+                "shelter_number": {
+                    "type": "number"
+                },
+                "bench_number": {
+                    "type": "number"
+                },
+                "trash_can_number": {
+                    "type": "number"
+                },
+                "street_lighting": {
+                    "type": "number"
+                },
             },
             "required": [
                 "best_view",
@@ -403,29 +403,16 @@ def enforce_logical_consistency(result: dict) -> dict:
     Fix obvious contradictions after Gemini returns JSON.
     """
 
-    # If Gemini says no bus stop is visible, do not allow bus-stop-specific
-    # features to be inferred from random roadside objects.
-    if result.get("bus_stop_visible") == "No":
-        result["shelter_number"] = 0
-        result["bench_number"] = 0
-        result["trash_can_number"] = 0
-        result["landing_pad"] = "NA"
-
-    # If there is no sidewalk connection, there cannot be a usable landing pad.
     if result["sidewalk_connection"] in ["No", "NA"]:
         result["landing_pad"] = "NA"
 
-    # If landing area is fully unpaved and not connected, landing pad should be NA.
     if result["landing_type"] == "Unpaved" and result["sidewalk_connection"] != "Yes":
         result["landing_pad"] = "NA"
 
-    # Concrete + paved usually means there is a usable paved connection,
-    # but only apply this when a bus stop is actually visible.
     if (
         result["stop_surface"] == "Concrete"
         and result["landing_type"] == "Paved"
         and result["sidewalk_connection"] == "NA"
-        and result.get("bus_stop_visible") != "No"
     ):
         result["sidewalk_connection"] = "Yes"
 
@@ -446,10 +433,7 @@ def analyze_stop(stop_id: str, views: dict) -> dict:
         f"""
 Stop ID: {stop_id}
 
-The next three images are the left, center, and right candidate views for this stop ID.
-
-First decide whether the images actually show a bus stop.
-Do not assume the stop is visible just because the filenames correspond to a stop ID.
+The next three images are the left, center, and right views of the same bus stop.
 
 Choose the best_view from these three images.
 Then classify the stop using that selected image.
@@ -524,7 +508,6 @@ def write_csv(results):
             row = {field: r.get(field, "") for field in fields}
             writer.writerow(row)
 
-
 def save_json(results):
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
@@ -548,25 +531,13 @@ def main():
     results = []
     already_done = set()
 
-    # Resume if previous results exist and are valid.
-    if OUTPUT_JSON.exists() and OUTPUT_JSON.stat().st_size > 0:
-        try:
-            with open(OUTPUT_JSON, "r", encoding="utf-8") as f:
-                results = json.load(f)
-                already_done = {r["stop_id"] for r in results}
-        except json.JSONDecodeError:
-            print(f"Warning: {OUTPUT_JSON} exists but is not valid JSON.")
-            print("Starting fresh. Rename or delete the broken file if needed.")
-            results = []
-            already_done = set()
-
-    processed_this_run = 0
+    # Resume if previous results exist.
+    if OUTPUT_JSON.exists():
+        with open(OUTPUT_JSON, "r", encoding="utf-8") as f:
+            results = json.load(f)
+            already_done = {r["stop_id"] for r in results}
 
     for stop_id, views in sorted(complete_groups.items()):
-        if MAX_STOPS is not None and processed_this_run >= MAX_STOPS:
-            print(f"Reached run limit of {MAX_STOPS} stops.")
-            break
-
         if stop_id in already_done:
             print(f"Skipping already processed stop {stop_id}")
             continue
@@ -575,8 +546,8 @@ def main():
             print(f"Processing stop {stop_id}...")
             result = analyze_stop(stop_id, views)
             results.append(result)
-            processed_this_run += 1
 
+            # Save after every stop so progress is not lost.
             save_json(results)
             write_csv(results)
 
@@ -585,24 +556,8 @@ def main():
                 f"({result['selected_image_filename']})"
             )
 
-        except KeyboardInterrupt:
-            print("\nStopped manually. Saving progress before exit...")
-            save_json(results)
-            write_csv(results)
-            break
-
         except Exception as e:
             print(f"FAILED stop {stop_id}: {e}")
-
-            error_text = str(e)
-
-            if "RESOURCE_EXHAUSTED" in error_text:
-                print("\nStopping because Gemini credits are depleted.")
-                break
-
-            if "403" in error_text or "PERMISSION_DENIED" in error_text:
-                print("\nStopping because this is an API permission/configuration problem.")
-                break
 
     save_json(results)
     write_csv(results)
