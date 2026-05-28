@@ -12,7 +12,7 @@ print(f"Running on {len(stops)} stops")
 with open(".api/api_key.txt", "r") as f:
     api_key = f.read().strip()
 
-os.makedirs("images_metadata", exist_ok=True)
+os.makedirs("images_metadata_3headings", exist_ok=True)
 
 def clean_filename(text):
     text = str(text).strip()
@@ -106,7 +106,7 @@ for _, row in stops.iterrows():
             continue
 
         filename = (
-            f"images_metadata/"
+            f"images_metadata_3headings/"
             f"{stop_code}_{safe_stop_name}_{image_date}_"
             f"{view_name}_heading-{round(sweep_heading)}.jpg"
         )
