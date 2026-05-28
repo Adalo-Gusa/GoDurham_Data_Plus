@@ -10,6 +10,7 @@ from pathlib import Path
 SOURCE_DIR = Path("images_metadata")
 OUTPUT_DIR = Path("images_metadata_current_only")
 NO_TXT_OUTPUT_DIR = Path("images_metadata_current_only_no_txt")
+TXT_ONLY_OUTPUT_DIR = Path("images_metadata_current_only_txt_only")
 
 VALID_IMAGE_EXTENSIONS = {
     ".jpg",
@@ -60,6 +61,22 @@ def create_no_txt_folder():
 
     print(f"No-txt folder created: {NO_TXT_OUTPUT_DIR.resolve()}")
 
+def create_txt_only_folder():
+    """
+    Creates a third output folder that copies only .txt files from OUTPUT_DIR.
+    """
+
+    if TXT_ONLY_OUTPUT_DIR.exists():
+        shutil.rmtree(TXT_ONLY_OUTPUT_DIR)
+
+    for path in OUTPUT_DIR.rglob("*"):
+        if path.is_file() and path.suffix.lower() == ".txt":
+            relative_path = path.relative_to(OUTPUT_DIR)
+            destination_path = TXT_ONLY_OUTPUT_DIR / relative_path
+            destination_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, destination_path)
+
+    print(f"Txt-only folder created: {TXT_ONLY_OUTPUT_DIR.resolve()}")
 # ============================================================
 # MAIN
 # ============================================================
@@ -105,6 +122,7 @@ def main():
             print(f"Copied current image: {source_path.name}")
 
     create_no_txt_folder()
+    create_txt_only_folder()
     
     print("\nFinished.")
     print(f"Images checked: {checked}")
