@@ -20,7 +20,7 @@ FINAL_IMAGES_DIR = Path("final_images")
 OUTPUT_JSON = Path("bus_stop_results.json")
 OUTPUT_CSV = Path("bus_stop_results.csv")
 
-MODEL = "gemini-3.5-flash"
+MODEL = "gemini-3.5-pro"
 
 # If using Google Cloud / Vertex / Agent Platform:
 def load_api_key(path: str) -> str:
