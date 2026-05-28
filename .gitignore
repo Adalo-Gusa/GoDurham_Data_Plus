@@ -6,3 +6,5 @@ __pycache__/
 .DS_Store
 **/vision_api.txt
 **/roboflow_api.txt
+.DS_Store
+**/.DS_Store
