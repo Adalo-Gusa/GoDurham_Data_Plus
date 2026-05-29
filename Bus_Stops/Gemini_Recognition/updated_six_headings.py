@@ -13,7 +13,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 CSV_PATH = BASE_DIR / "Altered 2026 GoDurham Bus Stop List.csv"
-API_KEY_PATH = BASE_DIR / ".api" / "api_key.txt"
+API_KEY_PATH = BASE_DIR.parent / ".api" / "api_key.txt"
 DEFAULT_OUTPUT_DIR = BASE_DIR / "images_metadata_6headings"
 
 
