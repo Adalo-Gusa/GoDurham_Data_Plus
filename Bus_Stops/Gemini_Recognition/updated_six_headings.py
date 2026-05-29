@@ -4,15 +4,17 @@ import math
 import argparse
 import requests
 import pandas as pd
-
+from pathlib import Path
 
 # ---------------------------------------------------------
 # 1. GLOBAL SETUP
 # ---------------------------------------------------------
 
-CSV_PATH = "Altered 2026 GoDurham Bus Stop List.csv"
-API_KEY_PATH = ".api/api_key.txt"
-DEFAULT_OUTPUT_DIR = "images_metadata_6headings"
+BASE_DIR = Path(__file__).resolve().parent
+
+CSV_PATH = BASE_DIR / "Altered 2026 GoDurham Bus Stop List.csv"
+API_KEY_PATH = BASE_DIR / ".api" / "api_key.txt"
+DEFAULT_OUTPUT_DIR = BASE_DIR / "images_metadata_6headings"
 
 
 # ---------------------------------------------------------
