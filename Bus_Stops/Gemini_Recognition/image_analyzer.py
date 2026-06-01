@@ -162,20 +162,20 @@ def group_images_by_stop(input_dir: Path):
 # ============================================================
 
 PROMPT = """
-You are analyzing bus stop images for a transit stop accessibility inventory.
+You are an observant visual analyst evaluating Street View images for a transit stop accessibility inventory.
 
-First, determine whether the provided images appear to show a bus stop or bus stop area.
+First, determine whether the provided images clearly show a usable bus stop area.
 Set bus_stop_visible:
-- "Yes" if at least one image clearly shows a bus stop sign, boarding area, shelter, or obvious bus stop zone.
-- "No" if no images appear to show a bus stop.
-- "Unclear"  If a large vehicle (bus, truck, car), heavy foliage, or shadows are completely blocking the view of the curb where a stop should be, making it impossible to evaluate.
+- "Yes": If you clearly see dedicated transit infrastructure, such as a GoDurham bus stop sign on a pole, a bus shelter, or a transit bench.
+- "No": If you only see general street features like sidewalks, grass, utility poles, or pedestrian crosswalk signs. Please note that generic yellow poles, fire hydrants, or utility poles do not confirm a bus stop.
+- "Unclear": If the view of the curb is blocked by a vehicle, heavy foliage, or active construction fencing. Important: A bus stopped in the road does not guarantee the actual stop infrastructure is visible; if the bus blocks the curb, please mark it "Unclear".
 
+Then choose the image that gives the best overall view of the boarding area.
 
-Then choose which image gives the best overall view of the bus stop (the boarding area, curb, and amenities).
+Classify the features using ONLY the best selected image.
+If bus_stop_visible is "No" or "Unclear", please still classify the environment and any visible objects (like sidewalks, benches, or trash cans) as accurately as possible. However, you MUST begin your notes with "MANUAL REVIEW REQUIRED: " and briefly explain the issue (e.g., "MANUAL REVIEW REQUIRED: A bus is blocking the view of the curb," or "MANUAL REVIEW REQUIRED: Only a utility pole is visible, no transit sign").
 
-If bus_stop_visible is "Yes", classify the features using ONLY the best selected image.
-If bus_stop_visible is "No" or "Unclear", classify what you can, but primarily explain the issue in the notes.
-
+Definitions:
 1. stop_surface: "Grass" or "Concrete"
 2. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
 3. sidewalk_connection: "Yes", "No", or "NA"
@@ -229,18 +229,11 @@ def enforce_logical_consistency(result: dict) -> dict:
     return result
 
 def force_na_attributes(result: dict) -> dict:
-    """Forces all classification fields to NA/0 when a stop is completely invisible after Pass 2."""
-    result["stop_surface"] = "Grass" 
-    result["landing_type"] = "Unpaved"
-    result["sidewalk_connection"] = "NA"
-    result["landing_pad"] = "NA"
-    result["shelter_number"] = 0
-    result["bench_number"] = 0
-    result["trash_can_number"] = 0
-    result["street_lighting"] = "No"
-    
+    """Flags for manual review WITHOUT erasing the model's feature counts."""
     current_notes = result.get("notes", "No stop visible after 6-heading fallback.")
-    if "MANUAL REVIEW REQUIRED" not in current_notes:
+    
+    # Ensure the note has the required flag so your team can easily filter the CSV
+    if "MANUAL REVIEW REQUIRED" not in current_notes.upper():
         result["notes"] = "MANUAL REVIEW REQUIRED: " + current_notes
         
     return result
