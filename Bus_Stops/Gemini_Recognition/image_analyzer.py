@@ -2,453 +2,263 @@ import os
 import re
 import csv
 import json
+import time
+import math
 import shutil
 import mimetypes
+import requests
+import pandas as pd
 from pathlib import Path
 from collections import defaultdict
 
 from google import genai
 from google.genai import types
 
-
 # ============================================================
-# CONFIG
+# CONFIG & SETUP
 # ============================================================
 
-INPUT_DIR = Path("images_metadata")          # folder containing all left/center/right images
+INPUT_DIR = Path("images_metadata")          
+FALLBACK_DIR = Path("images_metadata_6headings")
 FINAL_IMAGES_DIR = Path("final_images")
 OUTPUT_JSON = Path("bus_stop_results.json")
 OUTPUT_CSV = Path("bus_stop_results.csv")
 
-MODEL = "gemini-3.5-flash"
+# Ensure this matches your actual CSV file name
+STOPS_CSV = "../Altered 2026 GoDurham Bus Stop List.csv" 
 
-# If using Google Cloud / Vertex / Agent Platform:
+MODEL = "gemini-3.5-flash"
+GEMINI_PROJECT = "dataplus-godurham" # Your Vertex Project
+
+# Ensure directories exist
+FINAL_IMAGES_DIR.mkdir(exist_ok=True)
+FALLBACK_DIR.mkdir(exist_ok=True)
+
 def load_api_key(path: str) -> str:
     key_path = Path(path)
-
     if not key_path.exists():
-        raise FileNotFoundError(
-            f"Could not find API key file: {key_path}"
-        )
+        raise FileNotFoundError(f"Could not find API key file: {key_path}")
+    return key_path.read_text(encoding="utf-8").strip()
 
-    api_key = key_path.read_text(encoding="utf-8").strip()
-
-    if not api_key:
-        raise ValueError(f"API key file is empty: {key_path}")
-
-    return api_key
+# Initialize API Keys (Adjust the path here if needed)
+GOOGLE_MAPS_API_KEY = load_api_key("../.api/api_key.txt") 
 
 client = genai.Client(
     vertexai=True,
-    project="dataplus-godurham",
+    project=GEMINI_PROJECT,
     location="global",
 )
 
-
-
-FINAL_IMAGES_DIR.mkdir(exist_ok=True)
+# Load the bus stop dataframe once globally
+stops_df = pd.read_csv(STOPS_CSV)
 
 
 # ============================================================
-# YOUR PARSER
+# 6-HEADING WEB SCRAPER (PASS 2)
+# ============================================================
+
+def clean_filename(text):
+    text = str(text).strip()
+    bad_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '(', ')']
+    for char in bad_chars:
+        text = text.replace(char, "")
+    return text.replace(" ", "_")
+
+def get_metadata(lat, lon):
+    url = "https://maps.googleapis.com/maps/api/streetview/metadata"
+    params = {"location": f"{lat},{lon}", "radius": 25, "key": GOOGLE_MAPS_API_KEY}
+    return requests.get(url, params=params).json()
+
+def calculate_heading(from_lat, from_lon, to_lat, to_lon):
+    from_lat, from_lon = math.radians(from_lat), math.radians(from_lon)
+    to_lat, to_lon = math.radians(to_lat), math.radians(to_lon)
+    d_lon = to_lon - from_lon
+    x = math.sin(d_lon) * math.cos(to_lat)
+    y = math.cos(from_lat) * math.sin(to_lat) - math.sin(from_lat) * math.cos(to_lat) * math.cos(d_lon)
+    return (math.degrees(math.atan2(x, y)) + 360) % 360
+
+def fetch_stop_images(target_stop_code) -> dict:
+    """Fetches 6 sweep images and returns a dictionary of {view_name: Path}"""
+    stop_data = stops_df[stops_df["Stop Code"] == int(target_stop_code)]
+    
+    if stop_data.empty:
+        print(f"    Error: Stop code {target_stop_code} not found in {STOPS_CSV}.")
+        return {}
+
+    row = stop_data.iloc[0]
+    stop_name, bus_lat, bus_lon = row["Stop Name"], row["Latitude"], row["Longitude"]
+
+    metadata = get_metadata(bus_lat, bus_lon)
+    if metadata.get("status") != "OK":
+        return {}
+
+    pano_lat, pano_lon = metadata["location"]["lat"], metadata["location"]["lng"]
+    image_date = metadata.get("date", "unknown-date")
+    heading = calculate_heading(pano_lat, pano_lon, bus_lat, bus_lon)
+    safe_stop_name = clean_filename(stop_name)
+
+    sweep_offsets = {
+        "far_left": -75, "mid_left": -45, "slight_left": -15,
+        "slight_right": 15, "mid_right": 45, "far_right": 75
+    }
+
+    downloaded_views = {}
+
+    for view_name, offset in sweep_offsets.items():
+        sweep_heading = (heading + offset) % 360
+        url = "https://maps.googleapis.com/maps/api/streetview"
+        params = {
+            "size": "640x640", "pano": metadata["pano_id"], 
+            "heading": sweep_heading, "pitch": 0, "fov": 60, "key": GOOGLE_MAPS_API_KEY
+        }
+
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            filename = FALLBACK_DIR / f"{target_stop_code}_{safe_stop_name}_{image_date}_{view_name}_heading-{round(sweep_heading)}.jpg"
+            with open(filename, "wb") as f:
+                f.write(response.content)
+            downloaded_views[view_name] = filename
+        time.sleep(0.1)
+
+    return downloaded_views
+
+
+# ============================================================
+# PARSER & IMAGE GROUPING (PASS 1)
 # ============================================================
 
 def parse_stop_id_and_view(path: Path):
     filename = path.name.lower()
-
     match = re.match(r"^(\d{4})", filename)
     if not match:
-        raise ValueError(
-            f"Filename must start with a four-digit stop code: {path.name}"
-        )
-
+        raise ValueError(f"Filename must start with a four-digit stop code: {path.name}")
+    
     stop_id = match.group(1)
-
-    # Detect view only from the actual view tag before "_heading"
-    view_match = re.search(r"_(left|center|centre|right)_heading", filename)
+    view_match = re.search(r"_(left|center|centre|right|far_left|mid_left|slight_left|slight_right|mid_right|far_right)_heading", filename)
 
     if not view_match:
-        raise ValueError(
-            f"Could not determine view from filename: {path.name}. "
-            "Expected pattern like '_left_heading', '_center_heading', or '_right_heading'."
-        )
+        raise ValueError(f"Could not determine view from filename: {path.name}.")
 
-    view = view_match.group(1)
-
-    if view == "centre":
-        view = "center"
-
+    view = view_match.group(1).replace("centre", "center")
     return stop_id, view
-
-
-# ============================================================
-# GROUP IMAGES BY 4-DIGIT STOP CODE
-# ============================================================
 
 def group_images_by_stop(input_dir: Path):
     image_paths = []
-
     for ext in ["*.jpg", "*.jpeg", "*.png", "*.webp"]:
         image_paths.extend(input_dir.rglob(ext))
 
     grouped = defaultdict(dict)
-
     for path in image_paths:
         stop_id, view = parse_stop_id_and_view(path)
-
-        if view in grouped[stop_id]:
-            raise ValueError(
-                f"Duplicate {view} image for stop {stop_id}: "
-                f"{grouped[stop_id][view].name} and {path.name}"
-            )
-
         grouped[stop_id][view] = path
 
-    complete_groups = {}
-    incomplete_groups = {}
-
-    for stop_id, views in grouped.items():
-        if all(v in views for v in ["left", "center", "right"]):
-            complete_groups[stop_id] = views
-        else:
-            incomplete_groups[stop_id] = views
-
-    return complete_groups, incomplete_groups
+    # Only grab groups that have the basic left/center/right trio for Pass 1
+    complete_groups = {s: v for s, v in grouped.items() if all(k in v for k in ["left", "center", "right"])}
+    return complete_groups
 
 
 # ============================================================
-# GEMINI PROMPT
+# GEMINI PROMPT & SCHEMA
 # ============================================================
 
 PROMPT = """
-You are analyzing bus stop images for transit stop accessibility inventory.
+You are analyzing bus stop images for a transit stop accessibility inventory.
 
-Each bus stop has three image views:
-- left
-- center
-- right
-
-First, determine whether the image trio appears to show a bus stop or bus stop area.
-
+First, determine whether the provided images appear to show a bus stop or bus stop area.
 Set bus_stop_visible:
-- "Yes" if at least one of the three images clearly shows a bus stop sign, boarding/landing area, shelter, bench, route sign, bus stop pole, or obvious bus stop zone.
-- "No" if none of the three images appear to show a bus stop or relevant stop area.
-- "Unclear" if the scene may show the stop area but visual evidence is limited, blocked, blurry, too far away, or ambiguous.
+- "Yes" if at least one image clearly shows a bus stop sign, boarding area, shelter, or obvious bus stop zone.
+- "No" if no images appear to show a bus stop.
+- "Unclear"  If a large vehicle (bus, truck, car), heavy foliage, or shadows are completely blocking the view of the curb where a stop should be, making it impossible to evaluate.
 
-Set bus_stop_visibility_confidence from 0.0 to 1.0 based on how confident you are in the bus_stop_visible label.
 
-Then choose which image gives the best overall view of the bus stop.
-The best view should show the boarding/landing area, road edge or curb,
-sidewalk if present, and nearby amenities such as shelter, bench, trash can,
-and lighting.
+Then choose which image gives the best overall view of the bus stop (the boarding area, curb, and amenities).
 
-Then classify the bus stop using the best selected image only.
+If bus_stop_visible is "Yes", classify the features using ONLY the best selected image.
+If bus_stop_visible is "No" or "Unclear", classify what you can, but primarily explain the issue in the notes.
 
-Use only visible evidence. Do not guess hidden features.
-If a field is not applicable, use "NA".
-If uncertain, choose the most visually supported option and lower the confidence.
-Count only clearly visible objects at or immediately around the bus stop.
-
-If bus_stop_visible is "No" or "Unclear":
-- still choose the best available view
-- still classify visible attributes as best as possible
-- explain the concern in notes
-
-Definitions:
-
-1. stop_surface
-Allowed values: "Grass", "Concrete"
-
-Choose "Grass" when the surface immediately next to the road/curb where a rider
-would stand or board is mostly grass, dirt, or unpaved ground.
-
-Choose "Concrete" when that surface is mostly concrete, pavement, asphalt,
-or another hard paved surface.
-
-2. landing_type
-Allowed values: "Paved", "Unpaved", "Unpaved_Grass_Strip_And_Sidewalk"
-
-Choose "Paved" when the bus stop landing/standing area next to the road is paved,
-usually concrete, asphalt, or a paved sidewalk/road shoulder.
-
-Choose "Unpaved" when the landing/standing area next to the road is grass, dirt,
-gravel, or otherwise unpaved and there is no nearby sidewalk forming part of the stop area.
-
-Choose "Unpaved_Grass_Strip_And_Sidewalk" when the area next to the road is
-grass/unpaved but there is a sidewalk nearby or behind it, creating a grass strip
-between the road and sidewalk.
-
-3. sidewalk_connection
-Allowed values: "Yes", "No", "NA"
-
-Choose "Yes" if there is a paved path, curb cut, concrete pad, sidewalk, or
-continuous paved surface connecting the pedestrian area to the road/curb.
-
-Also choose "Yes" when the stop area is concrete/paved in its entirety from the
-sidewalk or standing area to the curb.
-
-Choose "No" if a sidewalk is visible but the rider would have to cross grass,
-dirt, gravel, or another unpaved surface to reach the road/curb.
-
-Choose "NA" if there is no sidewalk or pedestrian path visible.
-
-4. landing_pad
-Allowed values: "Two_doors", "One_door", "NA"
-
-Only classify this when there is a usable paved boarding area with
-sidewalk_connection = "Yes".
-
-Choose "Two_doors" if the paved landing area appears long enough and positioned
-to serve both the front and rear bus doors.
-
-Choose "One_door" if the paved landing area appears to serve only one bus door.
-
-Choose "NA" if there is no usable paved landing area, sidewalk_connection is
-"No" or "NA", or the landing pad is not visible enough to decide.
-
-5. shelter_number
-Integer count.
-
-0 means no visible shelter.
-Count the number of bus shelters visible at or immediately around the stop.
-A bench with a back panel but no roof should be counted as a bench, not a shelter.
-
-6. bench_number
-Integer count.
-
-0 means no visible bench.
-Count the number of benches visible at or immediately around the stop.
-
-7. trash_can_number
-Integer count.
-
-0 means no visible trash can.
-Count the number of trash cans visible at or immediately around the stop.
-
-8. street_lighting
-Allowed values: "Yes", "No"
-
-Choose "Yes" if a streetlight, lamp post, or dedicated lighting fixture is visible near the stop.
-Choose "No" if no lighting is visible near the stop.
-
-9. best_view
-Allowed values: "left", "center", "right"
-
-Choose the image that gives the clearest and most complete view of the bus stop
-and boarding area. Do not choose based only on image sharpness. Choose based on
-usefulness for classification.
+1. stop_surface: "Grass" or "Concrete"
+2. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
+3. sidewalk_connection: "Yes", "No", or "NA"
+4. landing_pad: "Two_doors", "One_door", or "NA"
+5. shelter_number: Integer count
+6. bench_number: Integer count
+7. trash_can_number: Integer count
+8. street_lighting: "Yes" or "No"
 
 Return only JSON matching the schema.
 """
 
-
-# ============================================================
-# JSON SCHEMA
-# ============================================================
-
 response_schema = {
     "type": "object",
     "properties": {
-        "stop_id": {
-            "type": "string"
-        },
+        "stop_id": {"type": "string"},
         "best_view": {
             "type": "string",
-            "enum": ["left", "center", "right"],
+            "enum": ["left", "center", "right", "far_left", "mid_left", "slight_left", "slight_right", "mid_right", "far_right"],
         },
-        "selected_image_filename": {
-            "type": "string"
-        },
-
-        # New bus stop visibility check
-        "bus_stop_visible": {
-            "type": "string",
-            "enum": ["Yes", "No", "Unclear"],
-        },
-        "bus_stop_visibility_confidence": {
-            "type": "number",
-        },
-
-        "stop_surface": {
-            "type": "string",
-            "enum": ["Grass", "Concrete"],
-        },
-        "landing_type": {
-            "type": "string",
-            "enum": [
-                "Paved",
-                "Unpaved",
-                "Unpaved_Grass_Strip_And_Sidewalk",
-            ],
-        },
-        "sidewalk_connection": {
-            "type": "string",
-            "enum": ["Yes", "No", "NA"],
-        },
-        "landing_pad": {
-            "type": "string",
-            "enum": ["Two_doors", "One_door", "NA"],
-        },
-        "shelter_number": {
-            "type": "integer",
-            "minimum": 0,
-        },
-        "bench_number": {
-            "type": "integer",
-            "minimum": 0,
-        },
-        "trash_can_number": {
-            "type": "integer",
-            "minimum": 0,
-        },
-        "street_lighting": {
-            "type": "string",
-            "enum": ["Yes", "No"],
-        },
-        "confidence": {
-            "type": "object",
-            "properties": {
-                "best_view": {
-                    "type": "number"
-                },
-                "bus_stop_visible": {
-                    "type": "number"
-                },
-                "stop_surface": {
-                    "type": "number"
-                },
-                "landing_type": {
-                    "type": "number"
-                },
-                "sidewalk_connection": {
-                    "type": "number"
-                },
-                "landing_pad": {
-                    "type": "number"
-                },
-                "shelter_number": {
-                    "type": "number"
-                },
-                "bench_number": {
-                    "type": "number"
-                },
-                "trash_can_number": {
-                    "type": "number"
-                },
-                "street_lighting": {
-                    "type": "number"
-                },
-            },
-            "required": [
-                "best_view",
-                "bus_stop_visible",
-                "stop_surface",
-                "landing_type",
-                "sidewalk_connection",
-                "landing_pad",
-                "shelter_number",
-                "bench_number",
-                "trash_can_number",
-                "street_lighting",
-            ],
-        },
-        "notes": {
-            "type": "string"
-        },
+        "selected_image_filename": {"type": "string"},
+        "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
+        "bus_stop_visibility_confidence": {"type": "number"},
+        "stop_surface": {"type": "string", "enum": ["Grass", "Concrete"]},
+        "landing_type": {"type": "string", "enum": ["Paved", "Unpaved", "Unpaved_Grass_Strip_And_Sidewalk"]},
+        "sidewalk_connection": {"type": "string", "enum": ["Yes", "No", "NA"]},
+        "landing_pad": {"type": "string", "enum": ["Two_doors", "One_door", "NA"]},
+        "shelter_number": {"type": "integer"},
+        "bench_number": {"type": "integer"},
+        "trash_can_number": {"type": "integer"},
+        "street_lighting": {"type": "string", "enum": ["Yes", "No"]},
+        "notes": {"type": "string"},
     },
-    "required": [
-        "stop_id",
-        "best_view",
-        "selected_image_filename",
-        "bus_stop_visible",
-        "bus_stop_visibility_confidence",
-        "stop_surface",
-        "landing_type",
-        "sidewalk_connection",
-        "landing_pad",
-        "shelter_number",
-        "bench_number",
-        "trash_can_number",
-        "street_lighting",
-        "confidence",
-        "notes",
-    ],
+    "required": ["stop_id", "best_view", "selected_image_filename", "bus_stop_visible", "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", "shelter_number", "bench_number", "trash_can_number", "street_lighting", "notes"],
 }
 
 
 # ============================================================
-# IMAGE HELPERS
+# LOGIC HELPERS
 # ============================================================
-
-def get_mime_type(path: Path) -> str:
-    mime_type, _ = mimetypes.guess_type(path)
-    if mime_type is None:
-        raise ValueError(f"Could not determine MIME type for {path}")
-    return mime_type
-
 
 def make_image_part(path: Path):
-    return types.Part.from_bytes(
-        data=path.read_bytes(),
-        mime_type=get_mime_type(path),
-    )
-
-
-# ============================================================
-# LOGIC CLEANUP
-# ============================================================
+    mime_type, _ = mimetypes.guess_type(path)
+    return types.Part.from_bytes(data=path.read_bytes(), mime_type=mime_type or "image/jpeg")
 
 def enforce_logical_consistency(result: dict) -> dict:
-    """
-    Fix obvious contradictions after Gemini returns JSON.
-    """
-
-    if result["sidewalk_connection"] in ["No", "NA"]:
+    if result.get("sidewalk_connection") in ["No", "NA"]:
         result["landing_pad"] = "NA"
-
-    if result["landing_type"] == "Unpaved" and result["sidewalk_connection"] != "Yes":
+    if result.get("landing_type") == "Unpaved" and result.get("sidewalk_connection") != "Yes":
         result["landing_pad"] = "NA"
+    return result
 
-    if (
-        result["stop_surface"] == "Concrete"
-        and result["landing_type"] == "Paved"
-        and result["sidewalk_connection"] == "NA"
-    ):
-        result["sidewalk_connection"] = "Yes"
-
+def force_na_attributes(result: dict) -> dict:
+    """Forces all classification fields to NA/0 when a stop is completely invisible after Pass 2."""
+    result["stop_surface"] = "Grass" 
+    result["landing_type"] = "Unpaved"
+    result["sidewalk_connection"] = "NA"
+    result["landing_pad"] = "NA"
+    result["shelter_number"] = 0
+    result["bench_number"] = 0
+    result["trash_can_number"] = 0
+    result["street_lighting"] = "No"
+    
+    current_notes = result.get("notes", "No stop visible after 6-heading fallback.")
+    if "MANUAL REVIEW REQUIRED" not in current_notes:
+        result["notes"] = "MANUAL REVIEW REQUIRED: " + current_notes
+        
     return result
 
 
 # ============================================================
-# GEMINI CALL
+# GEMINI CALL (Dynamic Image Injection + Deletion)
 # ============================================================
 
-def analyze_stop(stop_id: str, views: dict) -> dict:
-    left_path = views["left"]
-    center_path = views["center"]
-    right_path = views["right"]
-
-    contents = [
-        PROMPT,
-        f"""
-Stop ID: {stop_id}
-
-The next three images are the left, center, and right views of the same bus stop.
-
-Choose the best_view from these three images.
-Then classify the stop using that selected image.
-Set selected_image_filename to the filename of the chosen image.
-""",
-        "LEFT VIEW:",
-        make_image_part(left_path),
-        f"Left filename: {left_path.name}",
-        "CENTER VIEW:",
-        make_image_part(center_path),
-        f"Center filename: {center_path.name}",
-        "RIGHT VIEW:",
-        make_image_part(right_path),
-        f"Right filename: {right_path.name}",
-    ]
+def analyze_stop(stop_id: str, views: dict, pass_number: int = 1, previous_image_path: str = None) -> dict:
+    contents = [PROMPT, f"\nStop ID: {stop_id}\nReview the following {len(views)} images for this bus stop:\n"]
+    
+    for view_name, path in views.items():
+        contents.extend([
+            f"{view_name.upper()} VIEW:",
+            make_image_part(path),
+            f"Filename: {path.name}"
+        ])
 
     response = client.models.generate_content(
         model=MODEL,
@@ -463,110 +273,86 @@ Set selected_image_filename to the filename of the chosen image.
     result = json.loads(response.text)
     result = enforce_logical_consistency(result)
 
-    selected_view = result["best_view"]
+    # Safely select the best view returned by the model
+    selected_view = result.get("best_view")
+    if selected_view not in views:
+        selected_view = list(views.keys())[0] 
+        
     selected_path = views[selected_view]
 
     result["stop_id"] = stop_id
     result["selected_image_filename"] = selected_path.name
-
     destination = FINAL_IMAGES_DIR / selected_path.name
-    shutil.copy2(selected_path, destination)
 
+    # Check if we need to delete an old image from Pass 1
+    if pass_number == 2 and previous_image_path:
+        old_path = Path(previous_image_path)
+        if old_path.exists() and old_path.name != destination.name:
+            old_path.unlink()
+            print(f"    [Deleted previous Pass 1 image: {old_path.name}]")
+
+    shutil.copy2(selected_path, destination)
     result["final_image_path"] = str(destination)
 
     return result
-
 
 # ============================================================
 # SAVE OUTPUTS
 # ============================================================
 
 def write_csv(results):
-    fields = [
-        "stop_id",
-        "best_view",
-        "selected_image_filename",
-        "final_image_path",
-        "bus_stop_visible",
-        "bus_stop_visibility_confidence",
-        "stop_surface",
-        "landing_type",
-        "sidewalk_connection",
-        "landing_pad",
-        "shelter_number",
-        "bench_number",
-        "trash_can_number",
-        "street_lighting",
-        "notes",
-    ]
-
+    if not results: return
     with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
+        writer = csv.DictWriter(f, fieldnames=results[0].keys())
         writer.writeheader()
-
-        for r in results:
-            row = {field: r.get(field, "") for field in fields}
-            writer.writerow(row)
+        writer.writerows(results)
 
 def save_json(results):
+    if not results: return
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
+        json.dump(results, f, indent=4)
 
 
 # ============================================================
-# MAIN
+# MAIN PIPELINE
 # ============================================================
 
 def main():
-    complete_groups, incomplete_groups = group_images_by_stop(INPUT_DIR)
-
-    print(f"Complete stop trios found: {len(complete_groups)}")
-    print(f"Incomplete stop groups found: {len(incomplete_groups)}")
-
-    if incomplete_groups:
-        print("\nIncomplete groups skipped:")
-        for stop_id, views in incomplete_groups.items():
-            print(f"{stop_id}: found views {list(views.keys())}")
-
+    complete_groups = group_images_by_stop(INPUT_DIR)
     results = []
-    already_done = set()
-
-    # Resume if previous results exist.
-    if OUTPUT_JSON.exists():
-        with open(OUTPUT_JSON, "r", encoding="utf-8") as f:
-            results = json.load(f)
-            already_done = {r["stop_id"] for r in results}
-
+    
     for stop_id, views in sorted(complete_groups.items()):
-        if stop_id in already_done:
-            print(f"Skipping already processed stop {stop_id}")
-            continue
+        print(f"\nProcessing stop {stop_id} (Pass 1)...")
+        
+        # PASS 1: The 3-Heading Check
+        result = analyze_stop(stop_id, views, pass_number=1)
+        
+        # Branch Logic
+        if result["bus_stop_visible"] in ["No", "Unclear"]:
+            print(f"  -> Stop {stop_id} unclear. Triggering 6-heading fallback (Pass 2)...")
+            
+            fallback_views = fetch_stop_images(stop_id)
+            
+            if fallback_views:
+                # PASS 2: Pass previous image path so it can be deleted if a better one is found
+                previous_img = result.get("final_image_path")
+                result = analyze_stop(stop_id, fallback_views, pass_number=2, previous_image_path=previous_img)
+                
+                # Final check
+                if result["bus_stop_visible"] in ["No", "Unclear"]:
+                    print(f"  -> Stop {stop_id} STILL unclear. Flagging for manual review.")
+                    result = force_na_attributes(result)
+            else:
+                print(f"  -> Scraper failed to find data for {stop_id}. Flagging.")
+                result = force_na_attributes(result)
+                
+        results.append(result)
+        
+        # Save both CSV and JSON live
+        write_csv(results)
+        save_json(results)
 
-        try:
-            print(f"Processing stop {stop_id}...")
-            result = analyze_stop(stop_id, views)
-            results.append(result)
-
-            # Save after every stop so progress is not lost.
-            save_json(results)
-            write_csv(results)
-
-            print(
-                f"Done stop {stop_id}: selected {result['best_view']} "
-                f"({result['selected_image_filename']})"
-            )
-
-        except Exception as e:
-            print(f"FAILED stop {stop_id}: {e}")
-
-    save_json(results)
-    write_csv(results)
-
-    print("\nFinished.")
-    print(f"JSON saved to: {OUTPUT_JSON}")
-    print(f"CSV saved to: {OUTPUT_CSV}")
-    print(f"Selected images copied to: {FINAL_IMAGES_DIR}")
-
+    print("\nPipeline Finished successfully.")
 
 if __name__ == "__main__":
     main()
