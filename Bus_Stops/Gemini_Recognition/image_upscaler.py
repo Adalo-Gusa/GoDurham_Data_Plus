@@ -4,7 +4,7 @@ import cv2
 sr = cv2.dnn_superres.DnnSuperResImpl_create()
 
 # 2. Path to your downloaded pre-trained model file
-model_path = "EDSR_x2.pb"
+model_path = "Bus_Stops/images_metadata/EDSR_x2.pb"
 
 # 3. Read the model and load it into memory
 sr.readModel(model_path)
