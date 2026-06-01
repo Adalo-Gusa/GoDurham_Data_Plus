@@ -14,6 +14,7 @@ from collections import defaultdict
 from google import genai
 from google.genai import types
 
+
 # ============================================================
 # CONFIG & SETUP
 # ============================================================
@@ -37,9 +38,16 @@ FALLBACK_DIR.mkdir(exist_ok=True)
 
 def load_api_key(path: str) -> str:
     key_path = Path(path)
+
     if not key_path.exists():
         raise FileNotFoundError(f"Could not find API key file: {key_path}")
-    return key_path.read_text(encoding="utf-8").strip()
+
+    api_key = key_path.read_text(encoding="utf-8").strip()
+
+    if not api_key:
+        raise ValueError(f"API key file is empty: {key_path}")
+
+    return api_key
 
 
 # Initialize API Keys
@@ -62,8 +70,10 @@ stops_df = pd.read_csv(STOPS_CSV)
 def clean_filename(text):
     text = str(text).strip()
     bad_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '(', ')']
+
     for char in bad_chars:
         text = text.replace(char, "")
+
     return text.replace(" ", "_")
 
 
@@ -73,6 +83,7 @@ def normalize_stop_code(stop_code):
 
 def get_metadata(lat, lon):
     url = "https://maps.googleapis.com/maps/api/streetview/metadata"
+
     params = {
         "location": f"{lat},{lon}",
         "radius": 25,
@@ -169,6 +180,7 @@ def fetch_stop_images(target_stop_code) -> dict:
         rounded_heading = round(sweep_heading)
 
         url = "https://maps.googleapis.com/maps/api/streetview"
+
         params = {
             "size": "640x640",
             "pano": pano_id,
@@ -183,6 +195,7 @@ def fetch_stop_images(target_stop_code) -> dict:
             response.raise_for_status()
 
             content_type = response.headers.get("Content-Type", "")
+
             if "image" not in content_type.lower():
                 print(f"    Failed {view_name}: response was not an image")
                 continue
@@ -209,13 +222,14 @@ def fetch_stop_images(target_stop_code) -> dict:
 
 
 # ============================================================
-# PARSER & IMAGE GROUPING (PASS 1)
+# PARSER & IMAGE GROUPING
 # ============================================================
 
 def parse_stop_id_and_view(path: Path):
     filename = path.name.lower()
 
     match = re.match(r"^(\d{4})", filename)
+
     if not match:
         raise ValueError(f"Filename must start with a four-digit stop code: {path.name}")
 
@@ -230,6 +244,7 @@ def parse_stop_id_and_view(path: Path):
         raise ValueError(f"Could not determine view from filename: {path.name}.")
 
     view = view_match.group(1).replace("centre", "center")
+
     return stop_id, view
 
 
@@ -243,9 +258,16 @@ def group_images_by_stop(input_dir: Path):
 
     for path in image_paths:
         stop_id, view = parse_stop_id_and_view(path)
+
+        if view in grouped[stop_id]:
+            raise ValueError(
+                f"Duplicate {view} image for stop {stop_id}: "
+                f"{grouped[stop_id][view].name} and {path.name}"
+            )
+
         grouped[stop_id][view] = path
 
-    # Only grab groups that have the basic left/center/right trio for Pass 1
+    # Only grab groups that have the basic left/center/right trio for Pass 1.
     complete_groups = {
         stop_id: views
         for stop_id, views in grouped.items()
@@ -288,10 +310,13 @@ Definitions:
 Return only JSON matching the schema.
 """
 
+
 response_schema = {
     "type": "object",
     "properties": {
-        "stop_id": {"type": "string"},
+        "stop_id": {
+            "type": "string",
+        },
         "best_view": {
             "type": "string",
             "enum": [
@@ -312,21 +337,48 @@ response_schema = {
                 "far_right",
             ],
         },
-        "selected_image_filename": {"type": "string"},
-        "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
-        "bus_stop_visibility_confidence": {"type": "number"},
-        "stop_surface": {"type": "string", "enum": ["Grass", "Concrete"]},
+        "selected_image_filename": {
+            "type": "string",
+        },
+        "bus_stop_visible": {
+            "type": "string",
+            "enum": ["Yes", "No", "Unclear"],
+        },
+        "bus_stop_visibility_confidence": {
+            "type": "number",
+        },
+        "stop_surface": {
+            "type": "string",
+            "enum": ["Grass", "Concrete"],
+        },
         "landing_type": {
             "type": "string",
             "enum": ["Paved", "Unpaved", "Unpaved_Grass_Strip_And_Sidewalk"],
         },
-        "sidewalk_connection": {"type": "string", "enum": ["Yes", "No", "NA"]},
-        "landing_pad": {"type": "string", "enum": ["Two_doors", "One_door", "NA"]},
-        "shelter_number": {"type": "integer"},
-        "bench_number": {"type": "integer"},
-        "trash_can_number": {"type": "integer"},
-        "street_lighting": {"type": "string", "enum": ["Yes", "No"]},
-        "notes": {"type": "string"},
+        "sidewalk_connection": {
+            "type": "string",
+            "enum": ["Yes", "No", "NA"],
+        },
+        "landing_pad": {
+            "type": "string",
+            "enum": ["Two_doors", "One_door", "NA"],
+        },
+        "shelter_number": {
+            "type": "integer",
+        },
+        "bench_number": {
+            "type": "integer",
+        },
+        "trash_can_number": {
+            "type": "integer",
+        },
+        "street_lighting": {
+            "type": "string",
+            "enum": ["Yes", "No"],
+        },
+        "notes": {
+            "type": "string",
+        },
     },
     "required": [
         "stop_id",
@@ -472,9 +524,34 @@ def save_json(results):
 
 def main():
     complete_groups = group_images_by_stop(INPUT_DIR)
+
     results = []
+    already_done = set()
+
+    # Resume if previous results exist.
+    if OUTPUT_JSON.exists():
+        with open(OUTPUT_JSON, "r", encoding="utf-8") as f:
+            try:
+                results = json.load(f)
+
+                already_done = {
+                    str(r.get("stop_id")).strip().zfill(4)
+                    for r in results
+                    if r.get("stop_id")
+                }
+
+            except json.JSONDecodeError:
+                print(f"Warning: {OUTPUT_JSON} is malformed. Starting fresh.")
+                results = []
+                already_done = set()
 
     for stop_id, views in sorted(complete_groups.items()):
+        normalized_stop_id = str(stop_id).strip().zfill(4)
+
+        if normalized_stop_id in already_done:
+            print(f"Skipping already processed stop {stop_id}")
+            continue
+
         print(f"\nProcessing stop {stop_id} (Pass 1)...")
 
         # PASS 1: The original 3-heading check
@@ -489,10 +566,12 @@ def main():
             if fallback_views:
                 previous_img = result.get("final_image_path")
 
-                # Pass 2: use 8-heading fallback images
+                # Pass 2: analyze original 3 images + 8 fallback images together.
+                combined_views = {**views, **fallback_views}
+
                 result = analyze_stop(
                     stop_id,
-                    fallback_views,
+                    combined_views,
                     pass_number=2,
                     previous_image_path=previous_img,
                 )
@@ -507,7 +586,7 @@ def main():
 
         results.append(result)
 
-        # Save both CSV and JSON live
+        # Save both CSV and JSON live after each stop.
         write_csv(results)
         save_json(results)
 
