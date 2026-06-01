@@ -12,7 +12,8 @@ sr.setModel("edsr", 2)
 
 # 4. Load your low-resolution input image
 # Make sure your actual image is named 'bus_stop.jpg' or change this line!
-input_image = cv2.imread("bus_stop.jpg")
+# Update the path to look inside the folder
+input_image = cv2.imread("Bus_Stops/images_metadata/1072_Old_Chapel_Hill_Rd_at_Garrett_Rd_EB_2025-01_center_heading-102.jpg")
 
 # 5. Upsample the image
 print("Processing image resolution upgrade...")
