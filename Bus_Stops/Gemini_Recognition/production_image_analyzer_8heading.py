@@ -10,6 +10,7 @@ import requests
 import pandas as pd
 from pathlib import Path
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from google import genai
 from google.genai import types
@@ -19,7 +20,7 @@ from google.genai import types
 # CONFIG & SETUP
 # ============================================================
 
-INPUT_DIR = Path("images_metadata")
+INPUT_DIR = Path("images_metadata_current_only_no_txt")
 FALLBACK_DIR = Path("images_metadata_8headings")
 FINAL_IMAGES_DIR = Path("final_images")
 OUTPUT_JSON = Path("bus_stop_results.json")
@@ -282,34 +283,51 @@ def group_images_by_stop(input_dir: Path):
 # ============================================================
 
 PROMPT = """
-You are an observant visual analyst evaluating Street View images for a transit stop accessibility inventory.
+You are an expert visual analyst evaluating a sequence of Street View images for a transit stop accessibility inventory. 
 
-First, determine whether the provided images clearly show a usable bus stop area.
+CRITICAL INSTRUCTION: You must follow a strict TWO-PATH logical workflow. Attempt Path A first. Only proceed to Path B if Path A fails.
 
-Set bus_stop_visible:
-- "Yes": If you clearly see dedicated transit infrastructure, such as a GoDurham bus stop sign on a pole, a bus shelter, or a transit bench.
-- "No": If you only see general street features like sidewalks, grass, utility poles, or pedestrian crosswalk signs. Please note that generic yellow poles, fire hydrants, or utility poles do not confirm a bus stop.
-- "Unclear": If the view of the curb is blocked by a vehicle, heavy foliage, active construction fencing, distance, blur, or a poor camera angle. Important: A bus stopped in the road does not guarantee the actual stop infrastructure is visible; if the bus blocks the curb, please mark it "Unclear".
+=== PATH A: SINGLE-IMAGE FAST-TRACK ===
+Scan all provided images for transit infrastructure. Look for: 
+1. A bus stop sign (Note: These are often attached to standard wooden utility poles, street light poles, or metal U-channel posts).
+2. A bus shelter.
+3. A public bench situated directly at the road's shoulder/curb.
+(Note: Parked buses, bike racks, fire hydrants, and BARE utility poles WITHOUT signs DO NOT count as bus stops).
 
-Then choose the image that gives the best overall view of the boarding area.
+If you find a clear view of the transit infrastructure AND the boarding area in ONE single image:
+1. Set bus_stop_visible to "Yes".
+2. Set best_view to the name of that specific winning image.
+3. Classify ALL features (stop_surface, landing_type, amenities) using ONLY that single image. Stop here and output your JSON.
 
-Classify the features using ONLY the best selected image.
+=== PATH B: PANORAMIC SYNTHESIS ===
+If no single image provides a perfect view, you must synthesize the visual evidence from ALL images combined to evaluate the continuous environment.
 
-If bus_stop_visible is "No" or "Unclear", please still classify the environment and any visible objects as accurately as possible. However, you MUST begin your notes with "MANUAL REVIEW REQUIRED: " and briefly explain the issue.
+Evaluate the synthesized environment and choose ONE of the following outcomes:
 
-Definitions:
+Outcome 1: Synthesized "Yes" (Stop Exists)
+- Condition: The combined panorama proves a bus stop exists (e.g., the transit sign is visible in one image, and the concrete landing pad or bench is in another). 
+- Action: Set bus_stop_visible to "Yes". Set best_view to the image containing the transit sign, bench, or clearest part of the boarding pad. Synthesize the environment to count all features accurately. DO NOT flag for manual review.
+
+Outcome 2: Definitively "No" (Stop is Missing)
+- Condition: You have viewed the entire 360/panoramic area. There is absolutely no transit infrastructure (no bus sign, no shelter, no bench near the curb). You only see general street features.
+- Action: Set bus_stop_visible to "No". Classify whatever generic features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: Definitively no bus stop infrastructure visible in any image."
+
+Outcome 3: "Unclear" (Blocked or Obscured)
+- Condition: A parked vehicle (bus, car, truck), heavy foliage, or active construction completely blocks the view of the curb. Do NOT assume a stop exists just because a bus is parked there.
+- Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
+
+=== DEFINITIONS ===
 1. stop_surface: "Grass" or "Concrete"
 2. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
-3. sidewalk_connection: "Yes", "No", or "NA"
+3. sidewalk_connection: "Yes" (paved path connects stop to curb), "No" (must cross grass/dirt to reach curb), or "NA"
 4. landing_pad: "Two_doors", "One_door", or "NA"
-5. shelter_number: Integer count
-6. bench_number: Integer count
-7. trash_can_number: Integer count
-8. street_lighting: "Yes" or "No"
+5. shelter_number: Total integer count across the stop area.
+6. bench_number: Total integer count across the stop area.
+7. trash_can_number: Total integer count across the stop area.
+8. street_lighting: "Yes" (dedicated streetlight visible near stop) or "No"
 
 Return only JSON matching the schema.
 """
-
 
 response_schema = {
     "type": "object",
@@ -518,77 +536,64 @@ def save_json(results):
         json.dump(results, f, indent=4)
 
 
+#Testing Threading:
+# Create a wrapper function that handles the logic for ONE stop
+def process_single_stop(stop_id, views):
+    print(f"Processing stop {stop_id} (Pass 1)...")
+    
+    # PASS 1
+    result = analyze_stop(stop_id, views, pass_number=1)
+    
+    # PASS 2 (Fallback)
+    if result["bus_stop_visible"] in ["No", "Unclear"]:
+        fallback_views = fetch_stop_images(stop_id)
+        if fallback_views:
+            previous_img = result.get("final_image_path")
+            result = analyze_stop(stop_id, fallback_views, pass_number=2, previous_image_path=previous_img)
+            
+            if result["bus_stop_visible"] in ["No", "Unclear"]:
+                result = force_na_attributes(result)
+        else:
+            result = force_na_attributes(result)
+            
+    return result
 # ============================================================
 # MAIN PIPELINE
 # ============================================================
 
 def main():
     complete_groups = group_images_by_stop(INPUT_DIR)
-
     results = []
-    already_done = set()
-
-    # Resume if previous results exist.
-    if OUTPUT_JSON.exists():
-        with open(OUTPUT_JSON, "r", encoding="utf-8") as f:
+    
+    # Set max_workers to 5 or 10 depending on your Gemini API rate limits
+    MAX_THREADS = 5 
+    
+    print(f"Starting concurrent processing with {MAX_THREADS} threads...")
+    
+    with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
+        # Submit all tasks to the executor
+        future_to_stop = {
+            executor.submit(process_single_stop, stop_id, views): stop_id 
+            for stop_id, views in complete_groups.items()
+        }
+        
+        # As each thread finishes, collect the data
+        for future in as_completed(future_to_stop):
+            stop_id = future_to_stop[future]
             try:
-                results = json.load(f)
-
-                already_done = {
-                    str(r.get("stop_id")).strip().zfill(4)
-                    for r in results
-                    if r.get("stop_id")
-                }
-
-            except json.JSONDecodeError:
-                print(f"Warning: {OUTPUT_JSON} is malformed. Starting fresh.")
-                results = []
-                already_done = set()
-
-    for stop_id, views in sorted(complete_groups.items()):
-        normalized_stop_id = str(stop_id).strip().zfill(4)
-
-        if normalized_stop_id in already_done:
-            print(f"Skipping already processed stop {stop_id}")
-            continue
-
-        print(f"\nProcessing stop {stop_id} (Pass 1)...")
-
-        # PASS 1: The original 3-heading check
-        result = analyze_stop(stop_id, views, pass_number=1)
-
-        # Branch Logic
-        if result["bus_stop_visible"] in ["No", "Unclear"]:
-            print(f"  -> Stop {stop_id} unclear/not visible. Triggering 8-heading fallback (Pass 2)...")
-
-            fallback_views = fetch_stop_images(stop_id)
-
-            if fallback_views:
-                previous_img = result.get("final_image_path")
-
-                # Pass 2: analyze original 3 images + 8 fallback images together.
-                combined_views = {**views, **fallback_views}
-
-                result = analyze_stop(
-                    stop_id,
-                    combined_views,
-                    pass_number=2,
-                    previous_image_path=previous_img,
-                )
-
-                if result["bus_stop_visible"] in ["No", "Unclear"]:
-                    print(f"  -> Stop {stop_id} STILL unclear/not visible. Flagging for manual review.")
-                    result = force_na_attributes(result)
-
-            else:
-                print(f"  -> Scraper failed to find data for {stop_id}. Flagging.")
-                result = force_na_attributes(result)
-
-        results.append(result)
-
-        # Save both CSV and JSON live after each stop.
-        write_csv(results)
-        save_json(results)
+                result = future.result()
+                results.append(result)
+                
+                # --- THE FIX: Sort results by stop_id before saving ---
+                results_sorted = sorted(results, key=lambda x: int(x["stop_id"]))
+                
+                # Save the sorted list live
+                write_csv(results_sorted)
+                save_json(results_sorted)
+                
+                print(f"Finished stop {stop_id}")
+            except Exception as e:
+                print(f"Error processing stop {stop_id}: {e}")
 
     print("\nPipeline Finished successfully.")
 
