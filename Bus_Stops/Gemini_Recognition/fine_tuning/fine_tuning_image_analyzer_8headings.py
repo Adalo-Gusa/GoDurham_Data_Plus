@@ -16,14 +16,14 @@ from google.genai import types
 # ============================================================
 
 INPUT_DIR = Path("../images_metadata")          
-FALLBACK_DIR = Path("fine_tune_images_metadata_8headings") # Updated for 8 headings
+FALLBACK_DIR = Path("tuning_images_metadata_8headings") # Updated for 8 headings
 FINAL_IMAGES_DIR = Path("final_images_sandbox")  # Sandbox specific folder
 OUTPUT_JSON = Path("sandbox_results.json")       # Sandbox specific JSON
 
 # Ensure this matches your actual CSV file name path
 STOPS_CSV = "../Altered 2026 GoDurham Bus Stop List.csv" 
 
-MODEL = "gemini-3.5-flash"
+MODEL = "gemini-3-flash-preview"
 GEMINI_PROJECT = "dataplus-godurham" 
 
 # Ensure directories exist
@@ -286,7 +286,12 @@ def main():
     sandbox_results = load_sandbox_json()
     
     #ENTER STOP ID HERE
-    stop_id = 1406
+    #Problem Stops
+        #1406
+        #5023*
+        #6711
+        #6631*
+    stop_id = 6631
         
     print(f"\nSearching for Pass 1 images for Stop {stop_id} in {INPUT_DIR}...")
     views = fetch_local_views(stop_id, INPUT_DIR)
