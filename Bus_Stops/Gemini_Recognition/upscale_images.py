@@ -10,7 +10,7 @@ from pathlib import Path
 INPUT_DIR = Path("images_metadata_current_only_no_txt")
 OUTPUT_DIR = Path("images_metadata_current_only_no_txt_upscaled")
 
-MODEL_PATH = Path("FSRCNN_x2.pb")
+MODEL_PATH = Path("FSRCNN_x4.pb")
 MODEL_NAME = "fsrcnn"
 SCALE = 2
 
