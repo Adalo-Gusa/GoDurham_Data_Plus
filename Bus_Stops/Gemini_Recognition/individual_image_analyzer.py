@@ -1,5 +1,6 @@
 import os
 import re
+import csv
 import json
 import time
 import math
@@ -7,6 +8,7 @@ import shutil
 import mimetypes
 import requests
 import pandas as pd
+from collections import defaultdict
 from pathlib import Path
 from google import genai
 from google.genai import types
@@ -15,29 +17,28 @@ from google.genai import types
 # CONFIGURATION & SETUP
 # ============================================================
 
-INPUT_DIR = Path("../images_metadata")          
-FALLBACK_DIR = Path("tuning_images_metadata_8headings") # Updated for 8 headings
-FINAL_IMAGES_DIR = Path("final_images_sandbox")  # Sandbox specific folder
-OUTPUT_JSON = Path("sandbox_results.json")       # Sandbox specific JSON
+INPUT_DIR = Path("images_metadata")          
+FALLBACK_DIR = Path("images_metadata_8headings") 
+FINAL_IMAGES_DIR = Path("final_images")  
+OUTPUT_JSON = Path("bus_stop_results.json")
+OUTPUT_CSV = Path("bus_stop_results.csv")       
 
 # Ensure this matches your actual CSV file name path
-STOPS_CSV = "../Altered 2026 GoDurham Bus Stop List.csv" 
+STOPS_CSV = "Altered 2026 GoDurham Bus Stop List.csv" 
 
 MODEL = "gemini-3.5-flash"
 GEMINI_PROJECT = "dataplus-godurham" 
 
-# Ensure directories exist
 FINAL_IMAGES_DIR.mkdir(exist_ok=True)
 FALLBACK_DIR.mkdir(exist_ok=True)
 
-# Initialize API Keys
 def load_api_key(path: str) -> str:
     key_path = Path(path)
     if not key_path.exists():
         raise FileNotFoundError(f"Could not find API key file: {key_path}")
     return key_path.read_text(encoding="utf-8").strip()
 
-GOOGLE_MAPS_API_KEY = load_api_key("../../.api/api_key.txt") 
+GOOGLE_MAPS_API_KEY = load_api_key("../.api/api_key.txt") 
 
 client = genai.Client(
     vertexai=True,
@@ -45,7 +46,6 @@ client = genai.Client(
     location="global",
 )
 
-# Load the bus stop dataframe once globally for the scraper
 stops_df = pd.read_csv(STOPS_CSV)
 
 # ============================================================
@@ -73,11 +73,9 @@ def calculate_heading(from_lat, from_lon, to_lat, to_lon):
     return (math.degrees(math.atan2(x, y)) + 360) % 360
 
 def fetch_stop_images(target_stop_code) -> dict:
-    """Fetches 8 sweep images and returns a dictionary of {view_name: Path}"""
     stop_data = stops_df[stops_df["Stop Code"] == int(target_stop_code)]
-    
     if stop_data.empty:
-        print(f"    Error: Stop code {target_stop_code} not found in {STOPS_CSV}.")
+        print(f"    Error: Stop code {target_stop_code} not found.")
         return {}
 
     row = stop_data.iloc[0]
@@ -92,21 +90,13 @@ def fetch_stop_images(target_stop_code) -> dict:
     heading = calculate_heading(pano_lat, pano_lon, bus_lat, bus_lon)
     safe_stop_name = clean_filename(stop_name)
 
-    # 8-Heading Sweep (45-degree increments)
-    sweep_offsets = {
-        "n": 0, "ne": 45, "e": 90, "se": 135,
-        "s": 180, "sw": 225, "w": 270, "nw": 315
-    }
-
+    sweep_offsets = {"n": 0, "ne": 45, "e": 90, "se": 135, "s": 180, "sw": 225, "w": 270, "nw": 315}
     downloaded_views = {}
 
     for view_name, offset in sweep_offsets.items():
         sweep_heading = (heading + offset) % 360
         url = "https://maps.googleapis.com/maps/api/streetview"
-        params = {
-            "size": "640x640", "pano": metadata["pano_id"], 
-            "heading": sweep_heading, "pitch": 0, "fov": 60, "key": GOOGLE_MAPS_API_KEY
-        }
+        params = {"size": "640x640", "pano": metadata["pano_id"], "heading": sweep_heading, "pitch": 0, "fov": 60, "key": GOOGLE_MAPS_API_KEY}
 
         response = requests.get(url, params=params)
         if response.status_code == 200:
@@ -118,50 +108,41 @@ def fetch_stop_images(target_stop_code) -> dict:
 
     return downloaded_views
 
+
 # ============================================================
 # PROMPTS & SCHEMA
 # ============================================================
 
-# PROMPT 1: Strict, fast single-image filter. No overthinking allowed.
 PROMPT_PASS_1 = """
 You are an expert visual analyst evaluating a sequence of Street View images for a transit stop accessibility inventory.
 
-
 CRITICAL INSTRUCTION: You must follow a strict TWO-PATH logical workflow. Attempt Path A first. Only proceed to Path B if Path A fails.
-
 
 === PATH A: SINGLE-IMAGE FAST-TRACK ===
 Scan all provided images for clear, explicit transit infrastructure (a dedicated GoDurham bus stop sign, a bus shelter, or a dedicated transit bench).
 (Note: Parked buses, generic yellow poles, utility poles, and bike racks DO NOT count).
-
 
 If you find a clear view of the transit infrastructure AND the boarding area in ONE single image:
 1. Set bus_stop_visible to "Yes".
 2. Set best_view to the name of that specific winning image.
 3. Classify ALL features (stop_surface, landing_type, amenities) using ONLY that single image. Stop here and output your JSON.
 
-
 === PATH B: PANORAMIC SYNTHESIS ===
 If no single image provides a perfect view, you must synthesize the visual evidence from ALL images combined to evaluate the continuous environment.
 
-
 Evaluate the synthesized environment and choose ONE of the following outcomes:
-
 
 Outcome 1: Synthesized "Yes" (Stop Exists)
 - Condition: The combined panorama proves a bus stop exists (e.g., the transit sign is in the far-left image, but the concrete landing pad and bench are in the mid-left image).
 - Action: Set bus_stop_visible to "Yes". Set best_view to the image containing the transit sign or the clearest part of the boarding pad. Synthesize the environment to count all features accurately. DO NOT flag for manual review.
 
-
 Outcome 2: Definitively "No" (Stop is Missing)
 - Condition: You have viewed the entire 360/panoramic area. There is absolutely no transit infrastructure (no bus sign, no shelter). You only see general street features (sidewalks, grass, utility poles).
 - Action: Set bus_stop_visible to "No". Classify whatever generic features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: Definitively no bus stop infrastructure visible in any image."
 
-
 Outcome 3: "Unclear" (Blocked or Obscured)
 - Condition: A parked vehicle (bus, car, truck), heavy foliage, or active construction completely blocks the view of the curb. Do NOT assume a stop exists just because a bus is parked there.
 - Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
-
 
 === DEFINITIONS ===
 1. stop_surface: "Grass" or "Concrete"
@@ -173,11 +154,9 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 7. trash_can_number: Total integer count across the stop area.
 8. street_lighting: "Yes" (dedicated streetlight visible near stop) or "No"
 
-
 Return only JSON matching the schema.
 """
 
-# PROMPT 2: The deep-dive detective. Used only when Pass 1 fails and we have a full 360 view.
 PROMPT_PASS_2 = """
 You are an expert visual analyst evaluating a 360-degree panoramic sequence of a transit stop location. 
 YOU ARE A PRECISE MACHINE THAT PRIORITIZES REPRODUCIBILITY. FOLLOW EVER LINE AS IT COMES UP, THE PROMPT IS MENT TO BE FOLLOWED IN ORDER.
@@ -193,21 +172,20 @@ Scan the provided images for clear, explicit transit infrastructure. If ANY of t
 4. A public trash can adjacent to the road that is near where pedestrians would walk.
 (Note: Parked buses will obstruct view, bike racks, fire hydrants, and BARE utility poles or WITHOUT the up-right rectangle GoDurham bus sign DO NOT count).
 
-
 Outcome 1: Synthesized "Yes" (Stop Exists)
 - Condition: The combined panorama has ANY of the previously listed classification refreshers(1-4) are present throughout the entire synthesis. THEY DO NOT NEED TO BE IN CLOSE PROXIMITY TO EACH OTHER.
 - Action: Set bus_stop_visible to "Yes". Set best_view to the EXACT string identifier of the image containing any of the components or the best representation of a component. (e.g., "n", "sw", "right"). Synthesize the environment across all images to count features.
-- Add your thought process into the 'note' attribute in the JSON to help you make this classification, be sure to include the bus stop components in this note.
+- Add your thought process into the 'notes' attribute in the JSON to help you make this classification, be sure to include the bus stop components in this note.
 
 Outcome 2: Definitively "No" (Stop is Missing)
 - Condition: You have viewed the entire 360 area and found ZERO of the components. (There is absolutely no sign, no shelter, no bench, AND no trash can).
 - Action: Set bus_stop_visible to "No". Classify features you can see (sidewalks, grass). You MUST begin your notes with "MANUAL REVIEW REQUIRED: Definitively no bus stop infrastructure visible in any image."
-- Add your thought process into the 'note' attribute in the JSON to help you make this classification, be sure to include the bus stop components in this note.
+- Add your thought process into the 'notes' attribute in the JSON to help you make this classification, be sure to include the bus stop components in this note.
 
 Outcome 3: "Unclear" (Blocked or Obscured)
 - Condition: A parked vehicle (bus, car, truck), heavy foliage, or active construction blocks the view of the curb across ALL relevant images.
 - Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
-- Add your thought process into the 'note' attribute in the JSON to help you make this classification
+- Add your thought process into the 'notes' attribute in the JSON to help you make this classification
 
 DEFINITIONS:
 1. stop_surface: "Grass" or "Concrete"
@@ -246,7 +224,7 @@ response_schema = {
 }
 
 # ============================================================
-# LOGIC HELPERS
+# LOGIC HELPERS & CHECKPOINTING
 # ============================================================
 
 def make_image_part(path: Path):
@@ -261,16 +239,42 @@ def fetch_local_views(stop_id: str, directory: Path) -> dict:
             views[match.group(1)] = path
     return views
 
-def load_sandbox_json():
-    if OUTPUT_JSON.exists():
-        with open(OUTPUT_JSON, "r", encoding="utf-8") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return []
-    return []
+def group_images_by_stop(directory: Path) -> dict:
+    """Groups all image files in a directory by their stop_id."""
+    groups = defaultdict(dict)
+    for path in directory.glob("*.jpg"):
+        parts = path.name.split("_")
+        if parts and parts[0].isdigit():
+            stop_id = parts[0]
+            match = re.search(r"_([a-z_]+)_heading", path.name.lower())
+            if match:
+                groups[stop_id][match.group(1)] = path
+    return dict(groups)
 
-def save_sandbox_json(results):
+def load_existing_results():
+    """Loads already processed stops to prevent duplicate API calls."""
+    if not OUTPUT_CSV.exists():
+        return [], set()
+    
+    existing_results = []
+    processed_ids = set()
+    with open(OUTPUT_CSV, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            existing_results.append(row)
+            processed_ids.add(row["stop_id"])
+            
+    return existing_results, processed_ids
+
+def write_csv(results):
+    if not results: return
+    keys = list(results[0].keys())
+    with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=keys)
+        writer.writeheader()
+        writer.writerows(results)
+
+def save_json(results):
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4)
 
@@ -280,7 +284,6 @@ def save_sandbox_json(results):
 
 def analyze_stop(stop_id: str, views: dict, pass_number: int = 1, previous_image_path: str = None) -> dict:
     
-    # 1. Dynamically select the correct prompt based on the pass number!
     active_prompt = PROMPT_PASS_1 if pass_number == 1 else PROMPT_PASS_2
     
     contents = [active_prompt, f"\nStop ID: {stop_id}\nReview the following {len(views)} images for this bus stop:\n"]
@@ -318,7 +321,6 @@ def analyze_stop(stop_id: str, views: dict, pass_number: int = 1, previous_image
         old_path = Path(previous_image_path)
         if old_path.exists() and old_path.name != destination.name:
             old_path.unlink()
-            print(f"    [Deleted previous Pass 1 image: {old_path.name}]")
 
     shutil.copy2(selected_path, destination)
     result["final_image_path"] = str(destination)
@@ -326,57 +328,75 @@ def analyze_stop(stop_id: str, views: dict, pass_number: int = 1, previous_image
     return result
 
 # ============================================================
-# SINGLE-RUN TERMINAL SCRIPT
+# AUTOMATIC SEQUENTIAL LOOP (NO USER INPUT)
 # ============================================================
-
 def main():
-    print("=== Bus Stop Prompt Testing Sandbox ===")
+    print("=== Bus Stop Automatic Sequential Pipeline ===")
     print(f"Model: {MODEL}")
     
-    sandbox_results = load_sandbox_json()
+    # Load and group all available baseline images
+    complete_groups = group_images_by_stop(INPUT_DIR)
+    results, processed_ids = load_existing_results()
     
-    #ENTER STOP ID HERE
-    #Problem Stops
-        #1406
-        #5023*
-        #6631*
-        #6711
-        #5017
-        #5035
-        #1553
-    stop_id = 6631
-        
-    print(f"\nSearching for Pass 1 images for Stop {stop_id} in {INPUT_DIR}...")
-    views = fetch_local_views(stop_id, INPUT_DIR)
+    # Filter out stops we've already done
+    stops_to_process = {
+        stop_id: views for stop_id, views in complete_groups.items() 
+        if stop_id not in processed_ids
+    }
     
-    if not views:
-        print(f"Could not find any base images for {stop_id}. Exiting.")
+    if not stops_to_process:
+        print("All stops have already been processed! Nothing to do.")
         return
         
-    print(f"Found {len(views)} images. Running Gemini (Pass 1 - Fast Track)...")
-    result = analyze_stop(stop_id, views, pass_number=1)
+    print(f"Found {len(processed_ids)} already processed stops.")
+    print(f"Starting automatic processing for {len(stops_to_process)} remaining stops...")
     
-    # Check if we need to trigger Pass 2
-    if result.get("bus_stop_visible") in ["No", "Unclear"]:
-        print(f"\n[Triggered] Stop {stop_id} is {result['bus_stop_visible']}. Initiating 8-Heading Fallback...")
-        
-        fallback_views = fetch_local_views(stop_id, FALLBACK_DIR)
-        
-        if len(fallback_views) < 8:
-            print("Scraping 8 headings from Google Maps API...")
-            fallback_views = fetch_stop_images(stop_id)
-        
-        if fallback_views:
-            print(f"Found {len(fallback_views)} fallback images. Running Gemini (Pass 2 - Synthesis)...")
-            previous_img = result.get("final_image_path")
-            result = analyze_stop(stop_id, fallback_views, pass_number=2, previous_image_path=previous_img)
-        else:
-            print("No fallback images could be scraped.")
+    # --- THE FIX: Sort the stop IDs numerically before looping ---
+    sorted_stop_ids = sorted(stops_to_process.keys(), key=lambda x: int(x))
     
-    sandbox_results.append(result)
-    save_sandbox_json(sandbox_results)
-    print(f"\nData saved to {OUTPUT_JSON} and image saved to {FINAL_IMAGES_DIR}")
-    print("Run complete. Exiting script.")
+    # Run endlessly over remaining stops IN ORDER
+    for stop_id in sorted_stop_ids:
+        views = stops_to_process[stop_id] # Grab the views using the sorted ID
+        try:
+            print(f"\nProcessing Stop {stop_id}...")
+            print(f"  -> Found {len(views)} images. Running Gemini (Pass 1 - Fast Track)...")
+            
+            result = analyze_stop(stop_id, views, pass_number=1)
+            
+            # Trigger fallback if needed
+            if result.get("bus_stop_visible") in ["No", "Unclear"]:
+                print(f"  -> [Triggered] Stop {stop_id} is {result['bus_stop_visible']}. Initiating 8-Heading Fallback...")
+                
+                fallback_views = fetch_local_views(stop_id, FALLBACK_DIR)
+                
+                if len(fallback_views) < 8:
+                    print("  -> Scraping 8 headings from Google Maps API...")
+                    fallback_views = fetch_stop_images(stop_id)
+                
+                if fallback_views:
+                    print(f"  -> Found {len(fallback_views)} fallback images. Running Gemini (Pass 2 - Synthesis)...")
+                    previous_img = result.get("final_image_path")
+                    result = analyze_stop(stop_id, fallback_views, pass_number=2, previous_image_path=previous_img)
+                else:
+                    print("  -> No fallback images could be scraped.")
+            
+            # Enforce "MANUAL REVIEW" text if Pass 2 still fails
+            current_notes = result.get("notes", "")
+            if result.get("bus_stop_visible") in ["No", "Unclear"] and "MANUAL REVIEW REQUIRED" not in current_notes.upper():
+                result["notes"] = "MANUAL REVIEW REQUIRED: " + current_notes
+
+            # Append, sort, and save live data
+            results.append(result)
+            results_sorted = sorted(results, key=lambda x: int(x["stop_id"]))
+            write_csv(results_sorted)
+            save_json(results_sorted)
+            
+            print(f"✅ Finished stop {stop_id}. Final Classification: {result.get('bus_stop_visible')}")
+            
+        except Exception as e:
+            print(f"❌ Error processing stop {stop_id}: {e}")
+
+    print("\nPipeline Finished successfully.")
 
 if __name__ == "__main__":
     main()
