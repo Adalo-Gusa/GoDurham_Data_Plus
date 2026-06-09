@@ -125,7 +125,9 @@ Scan all provided images for clear, explicit transit infrastructure (a dedicated
 If you find a clear view of the transit infrastructure AND the boarding area in ONE single image:
 1. Set bus_stop_visible to "Yes".
 2. Set best_view to the name of that specific winning image.
-3. Classify ALL features (stop_surface, landing_type, amenities) using ONLY that single image. Stop here and output your JSON.
+3. Classify ALL features (stop_surface, landing_type, amenities) using ONLY that single image. 
+STILL: Synthesize all of the images to search for a cross walk. 
+Stop here and output your JSON.
 
 === PATH B: PANORAMIC SYNTHESIS ===
 If no single image provides a perfect view, you must synthesize the visual evidence from ALL images combined to evaluate the continuous environment.
@@ -145,14 +147,15 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 - Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
 
 === DEFINITIONS ===
-1. stop_surface: "Grass" or "Concrete"
-2. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
-3. sidewalk_connection: "Yes" (paved path connects stop to curb), "No" (must cross grass/dirt to reach curb), or "NA"
-4. landing_pad: "Two_doors", "One_door", or "NA"
-5. shelter_number: Total integer count across the stop area.
-6. bench_number: Total integer count across the stop area.
-7. trash_can_number: Total integer count across the stop area.
-8. street_lighting: "Yes" (dedicated streetlight visible near stop) or "No"
+1. shelter_number: Total integer count across ALL images.
+2. bench_number: Total integer count across ALL images.
+3. trash_can_number: Total integer count of ANY visible public trash cans. 
+4. stop_surface: "Grass" or "Concrete"
+5. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
+6. sidewalk_connection: "Yes", "No", or "NA"
+7. landing_pad: "Two_doors", "One_door", or "NA"
+8. cross_walk: "Yes", or "No"
+9. street_lighting: "Yes" or "No"
 
 Return only JSON matching the schema.
 """
@@ -188,39 +191,77 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 - Add your thought process into the 'notes' attribute in the JSON to help you make this classification
 
 DEFINITIONS:
-1. stop_surface: "Grass" or "Concrete"
-2. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
-3. sidewalk_connection: "Yes", "No", or "NA"
-4. landing_pad: "Two_doors", "One_door", or "NA"
-5. shelter_number: Total integer count across ALL images.
-6. bench_number: Total integer count across ALL images.
-7. trash_can_number: Total integer count of ANY visible public trash cans. 
-8. street_lighting: "Yes" or "No"
+1. shelter_number: Total integer count across ALL images.
+2. bench_number: Total integer count across ALL images.
+3. trash_can_number: Total integer count of ANY visible public trash cans. 
+4. stop_surface: "Grass" or "Concrete"
+5. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
+6. sidewalk_connection: "Yes", "No", or "NA"
+7. landing_pad: "Two_doors", "One_door", or "NA"
+8. cross_walk: "Yes", or "No"
+9. street_lighting: "Yes" or "No"
 
 Return only JSON matching the schema.
 """
 
 response_schema = {
     "type": "object",
+    "selected_image_filename": {"type": "string"},
     "properties": {
         "stop_id": {"type": "string"},
+        "lattitude": {"type": "string"},
+        "longitude": {"type": "string"},
         "best_view": {
             "type": "string",
             "description": "The exact view name (e.g., left, right, center, front, front_right) that best shows the stop."
         },
-        "selected_image_filename": {"type": "string"},
         "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
+        "bus_stop_visibility_confidence": {
+            "type": "number",
+            "description": "A decimal value between 0.0 and 1.0 representing confidence that there IS a Bus stop. "
+            "1.0 means with ALL certainty a Bus Stop EXISTS "
+            "0.0 means there is no possibility of a Bus Stop AT ALL"
+            
+        },
+        
+        "shelter_present": {
+            "type": "integer", 
+            "description": "Output 1 if a shelter is present, 0 if not."
+        },
+        "shelter_number": {"type": "integer"},
+
+        "bench_present": {
+            "type": "integer", 
+            "description": "Output 1 if a bench is present, 0 if not."
+        },
+        "bench_number": {"type": "integer"},
+
+        "trash_can_present": {
+            "type": "integer", 
+            "description": "Output 1 if a trash can is present, 0 if not."
+        },
+        "trash_can_number": {"type": "integer"},
+        
         "stop_surface": {"type": "string", "enum": ["Grass", "Concrete"]},
         "landing_type": {"type": "string", "enum": ["Paved", "Unpaved", "Unpaved_Grass_Strip_And_Sidewalk"]},
         "sidewalk_connection": {"type": "string", "enum": ["Yes", "No", "NA"]},
         "landing_pad": {"type": "string", "enum": ["Two_doors", "One_door", "NA"]},
-        "shelter_number": {"type": "integer"},
-        "bench_number": {"type": "integer"},
-        "trash_can_number": {"type": "integer"},
+        "cross_walk": {"type": "string", "enum": ["Yes", "No"]},
         "street_lighting": {"type": "string", "enum": ["Yes", "No"]},
+        "date": {
+            "type": "string",
+            "description": "The exact year and month the image was taken (e.g., 2026-1, 2025-3) explicitly stated in the file name"
+        },
         "notes": {"type": "string"},
     },
-    "required": ["stop_id", "best_view", "selected_image_filename", "bus_stop_visible", "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", "shelter_number", "bench_number", "trash_can_number", "street_lighting", "notes"],
+    "required": [
+        "stop_id", "best_view", "selected_image_filename", "bus_stop_visible", "bus_stop_visibility_confidence", 
+        "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", 
+        "shelter_number", "shelter_present",
+        "bench_number", "bench_present",  
+        "trash_can_number", "trash_can_present", "date",
+        "street_lighting", "notes"
+    ],
 }
 
 # ============================================================
@@ -277,6 +318,21 @@ def write_csv(results):
 def save_json(results):
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4)
+
+def get_lat_lon(stop_id):
+    # 1. Filter the dataframe where the "Stop Code" column matches your ID
+    stop_row = stops_df[stops_df["Stop Code"] == int(stop_id)]
+    
+    # 2. Safety check: Did we find the stop?
+    if stop_row.empty:
+        print(f"Error: Stop ID {stop_id} not found in CSV.")
+        return None, None
+        
+    # 3. Extract the exact values using .iloc[0] (which grabs the first matching row)
+    lat = stop_row.iloc[0]["Latitude"]
+    lon = stop_row.iloc[0]["Longitude"]
+    
+    return lat, lon
 
 # ============================================================
 # GEMINI CALL 
@@ -356,6 +412,8 @@ def main():
     
     # Run endlessly over remaining stops IN ORDER
     for stop_id in sorted_stop_ids:
+        lattitude, longitude = get_lat_lon(stop_id)
+        //print(lattitude, longitude)
         views = stops_to_process[stop_id] # Grab the views using the sorted ID
         try:
             print(f"\nProcessing Stop {stop_id}...")
@@ -391,10 +449,10 @@ def main():
             write_csv(results_sorted)
             save_json(results_sorted)
             
-            print(f"✅ Finished stop {stop_id}. Final Classification: {result.get('bus_stop_visible')}")
+            print(f"Finished stop {stop_id}. Final Classification: {result.get('bus_stop_visible')}")
             
         except Exception as e:
-            print(f"❌ Error processing stop {stop_id}: {e}")
+            print(f"Error processing stop {stop_id}: {e}")
 
     print("\nPipeline Finished successfully.")
 
