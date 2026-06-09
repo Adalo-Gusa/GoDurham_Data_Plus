@@ -1,0 +1,26 @@
+Task 2.3 Inspection Framework - Draft Report Text
+
+Inspection Priority Score explanation:
+The Inspection Priority Score groups stops by the likelihood that they need routine maintenance monitoring. Unlike the Cleaning Priority Score, this score emphasizes equipment and safety risk. Stops receive points for amenities and assets that require inspection, including shelters, benches, trash cans, lighting, real-time information signs, and bike parking. Stops also receive points for complaint history, passenger activity, difficult boarding/access conditions, high-traffic roadway context, and known visual issues identified in the inventory notes.
+
+Tier definitions and recommended frequencies:
+- High: score 12 or higher. Inspect monthly. These stops should receive full equipment and safety inspections because they have multiple inspectable assets, higher activity, complaint history, or known condition concerns.
+- Medium: score 6 to 11. Inspect quarterly. These stops have some equipment or risk factors and should receive standard equipment inspections.
+- Low: score 0 to 5. Inspect semiannually. These stops generally have fewer assets and lower inspection risk, so a basic condition check is appropriate.
+- Manual Review: stops where the bus stop was not visible, unclear, or flagged for verification. These should be field-verified before receiving a regular inspection schedule.
+
+Current results from this dataset:
+inspection_tier  stop_count
+           High          94
+         Medium         383
+            Low         370
+  Manual Review          17
+
+Inspection focus areas:
+Inspection checklists should be customized by stop amenities. All stops should include sign/post condition. Sheltered stops should include shelter roof, frame, panels, anchors, and loose screws. Stops with seating should include bench surface condition and anchors. Stops with trash cans should include can condition, liner/lid condition, overflow, and pests. Stops with lighting should include bulb outages and pole/electrical condition. Stops with real-time signage should include display condition and functionality. Stops with unpaved landings, missing sidewalk connections, or traffic-lane loading should include landing, sidewalk, ADA, and safety access checks.
+
+City/contractor oversight recommendations:
+GoDurham should require photo documentation for completed inspections, especially for High-tier stops and stops with shelters, lighting, or real-time information signs. City staff should review a random sample of inspection photos each month, conduct spot checks on a sample of High and Medium stops, and track KPIs such as inspections completed on time, issues found, issues resolved, repeat issues, photo compliance, and time from issue identification to repair. Stops with repeated failed inspections or repeat complaints should be escalated for follow-up.
+
+Repair records caveat:
+This draft uses complaints as the available issue-history field. If detailed repair records are provided later, they should be merged into the dataset and added as a separate repair-history score, especially for recurring issues such as lighting outages, damaged shelters, missing panels, loose bench anchors, or repeated trash can damage.

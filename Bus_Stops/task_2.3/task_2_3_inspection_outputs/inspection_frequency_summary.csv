@@ -1,0 +1,5 @@
+inspection_tier,recommended_inspection_frequency,stop_count
+High,Monthly,94
+Low,Semiannual,370
+Manual Review,Field verify before assigning schedule,17
+Medium,Quarterly,383
