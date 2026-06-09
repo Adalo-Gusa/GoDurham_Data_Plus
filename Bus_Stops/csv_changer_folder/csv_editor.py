@@ -6,7 +6,7 @@ import csv
 # ============================================================
 
 MAIN_CSV = Path("Altered 2026 GoDurham Bus Stop List.csv")
-COORDS_CSV = Path("newestedcoordinates.csv")
+COORDS_CSV = Path("newestcoordinates.csv")
 STOPS_FILTER_FILE = Path("stops.txt")
 
 OUTPUT_CSV = Path("Altered 2026 GoDurham Bus Stop List_updated_filtered.csv")
