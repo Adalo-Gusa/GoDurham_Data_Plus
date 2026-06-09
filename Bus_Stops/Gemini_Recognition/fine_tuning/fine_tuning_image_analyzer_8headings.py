@@ -317,6 +317,7 @@ def fetch_local_views(stop_id: str, directory: Path) -> dict:
             views[match.group(1)] = path
     return views
 
+
 def load_sandbox_json():
     if OUTPUT_JSON.exists():
         with open(OUTPUT_JSON, "r", encoding="utf-8") as f:

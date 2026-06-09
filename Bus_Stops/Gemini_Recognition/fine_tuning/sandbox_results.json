@@ -3104,5 +3104,30 @@
         "date": "2025-09",
         "notes": "MANUAL REVIEW REQUIRED: Definitively no bus stop infrastructure visible in any image. Checked all 360-degree views. There is a sidewalk, a wooden fence, a fire hydrant, and a pedestrian crossing sign, but no GoDurham bus stop sign, shelter, bench, or trash can.",
         "final_image_path": "final_images_sandbox/6711_Hillandale_Rd_at_Croasdaile_Farm_Pkwy_2025-09_n_heading-275.jpg"
+    },
+    {
+        "stop_id": 6711,
+        "stop_name": "Hillandale Rd at Croasdaile Farm Pkwy",
+        "selected_image_filename": "6711_Hillandale_Rd_at_Croasdaile_Farm_Pkwy_2025-09_e_heading-5.jpg",
+        "lattitude": 36.051095,
+        "longitude": -78.935588,
+        "best_view": "e",
+        "bus_stop_visible": "No",
+        "bus_stop_visibility_confidence": 0.0,
+        "shelter_present": 0.0,
+        "shelter_number": 0,
+        "bench_present": 0.0,
+        "bench_number": 0,
+        "trash_can_present": 0.0,
+        "trash_can_number": 0,
+        "stop_surface": "Grass",
+        "landing_type": "Unpaved_Grass_Strip_And_Sidewalk",
+        "sidewalk_connection": "Yes",
+        "landing_pad": "NA",
+        "cross_walk": "Yes",
+        "street_lighting": "Yes",
+        "date": "2025-09",
+        "notes": "MANUAL REVIEW REQUIRED: Definitively no bus stop infrastructure visible in any image. Checked all 360-degree views and found no GoDurham bus stop sign, shelter, bench, or trash can. There is a sidewalk and a grass strip along the road, and a crosswalk at the intersection of Hillandale Rd and Croasdaile Farm Pkwy.",
+        "final_image_path": "final_images_sandbox/6711_Hillandale_Rd_at_Croasdaile_Farm_Pkwy_2025-09_e_heading-5.jpg"
     }
 ]

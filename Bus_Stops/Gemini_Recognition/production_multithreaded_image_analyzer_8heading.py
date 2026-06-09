@@ -18,21 +18,24 @@ from google.genai import types
 # CONFIGURATION & SETUP
 # ============================================================
 
+
 INPUT_DIR = Path("images_metadata")          
 FALLBACK_DIR = Path("images_metadata_8headings") 
 FINAL_IMAGES_DIR = Path("final_images")  
 OUTPUT_JSON = Path("bus_stop_results.json")
-OUTPUT_CSV = Path("bus_stop_results.csv")       
+OUTPUT_CSV = Path("bus_stop_results.csv") 
 
 # Ensure this matches your actual CSV file name path
-STOPS_CSV = "Altered 2026 GoDurham Bus Stop List.csv" 
+STOPS_CSV = "Final 2026 GoDurham Bus Stop List_updated_filtered.csv" 
 
 MODEL = "gemini-3.5-flash"
 GEMINI_PROJECT = "dataplus-godurham" 
 
+# Ensure directories exist
 FINAL_IMAGES_DIR.mkdir(exist_ok=True)
 FALLBACK_DIR.mkdir(exist_ok=True)
 
+# Initialize API Keys
 def load_api_key(path: str) -> str:
     key_path = Path(path)
     if not key_path.exists():
@@ -47,6 +50,7 @@ client = genai.Client(
     location="global",
 )
 
+# Load the bus stop dataframe once globally for the scraper
 stops_df = pd.read_csv(STOPS_CSV)
 
 # ============================================================
@@ -74,9 +78,11 @@ def calculate_heading(from_lat, from_lon, to_lat, to_lon):
     return (math.degrees(math.atan2(x, y)) + 360) % 360
 
 def fetch_stop_images(target_stop_code) -> dict:
+    """Fetches 8 sweep images and returns a dictionary of {view_name: Path}"""
     stop_data = stops_df[stops_df["Stop Code"] == int(target_stop_code)]
+    
     if stop_data.empty:
-        print(f"    Error: Stop code {target_stop_code} not found.")
+        print(f"    Error: Stop code {target_stop_code} not found in {STOPS_CSV}.")
         return {}
 
     row = stop_data.iloc[0]
@@ -91,13 +97,21 @@ def fetch_stop_images(target_stop_code) -> dict:
     heading = calculate_heading(pano_lat, pano_lon, bus_lat, bus_lon)
     safe_stop_name = clean_filename(stop_name)
 
-    sweep_offsets = {"n": 0, "ne": 45, "e": 90, "se": 135, "s": 180, "sw": 225, "w": 270, "nw": 315}
+    # 8-Heading Sweep (45-degree increments)
+    sweep_offsets = {
+        "n": 0, "ne": 45, "e": 90, "se": 135,
+        "s": 180, "sw": 225, "w": 270, "nw": 315
+    }
+
     downloaded_views = {}
 
     for view_name, offset in sweep_offsets.items():
         sweep_heading = (heading + offset) % 360
         url = "https://maps.googleapis.com/maps/api/streetview"
-        params = {"size": "640x640", "pano": metadata["pano_id"], "heading": sweep_heading, "pitch": 0, "fov": 60, "key": GOOGLE_MAPS_API_KEY}
+        params = {
+            "size": "640x640", "pano": metadata["pano_id"], 
+            "heading": sweep_heading, "pitch": 0, "fov": 60, "key": GOOGLE_MAPS_API_KEY
+        }
 
         response = requests.get(url, params=params)
         if response.status_code == 200:
@@ -108,7 +122,6 @@ def fetch_stop_images(target_stop_code) -> dict:
         time.sleep(0.1)
 
     return downloaded_views
-
 
 # ============================================================
 # PROMPTS & SCHEMA
@@ -147,9 +160,19 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 - Condition: A parked vehicle (bus, car, truck), heavy foliage, or active construction completely blocks the view of the curb. Do NOT assume a stop exists just because a bus is parked there.
 - Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
 
+Important: 
+Confidence Scores: bus_stop_visibility, shelter_present, bench_present. trash_can_present
+These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accuratly
+Represent your confidence in the presence of each of these attributes. It is important that give your honest rating and actually include
+decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classifcation.
+Remember this when assinging your confidence scores. 
+
 === DEFINITIONS ===
+stop_name: EXACT value saved in variable: "name"
+lattidude: EXACT saved in variable: "lattitude"
+longitude: EXACT saved in variable: "longitude"
 1. shelter_number: Total integer count across ALL images.
-2. bench_number: Total integer count across ALL images.
+2. bench_number: Total integer count across ALL images. If there is a shelter present there is at least one.
 3. trash_can_number: Total integer count of ANY visible public trash cans. 
 4. stop_surface: "Grass" or "Concrete"
 5. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
@@ -191,9 +214,19 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 - Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
 - Add your thought process into the 'notes' attribute in the JSON to help you make this classification
 
+IMPORTANT: 
+Confidence Scores: bus_stop_visibility, shelter_present, bench_present. trash_can_present
+These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accuratly
+Represent your confidence in the presence of each of these attributes. It is important that give your HONEST rating and actually include
+decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classifcation.
+Remember this when assinging your confidence scores. 
+
 DEFINITIONS:
+stop_name: EXACT value saved in variable: "name"
+lattidude: EXACT saved in variable: "lattitude"
+longitude: EXACT saved in variable: "longitude"
 1. shelter_number: Total integer count across ALL images.
-2. bench_number: Total integer count across ALL images.
+2. bench_number: Total integer count across ALL images, if there is a shelter present there is at least one.
 3. trash_can_number: Total integer count of ANY visible public trash cans. 
 4. stop_surface: "Grass" or "Concrete"
 5. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
@@ -209,11 +242,14 @@ response_schema = {
     "type": "object",
     "properties": {
         "stop_id": {"type": "string"},
+        "stop_name": {"type": "string"},
+        "selected_image_filename": {"type": "string"},
+        "lattitude": {"type": "number"},
+        "longitude": {"type": "number"},
         "best_view": {
             "type": "string",
             "description": "The exact view name (e.g., left, right, center, front, front_right) that best shows the stop."
         },
-        "selected_image_filename": {"type": "string"},
         "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "bus_stop_visibility_confidence": {
             "type": "number",
@@ -224,20 +260,26 @@ response_schema = {
         },
         
         "shelter_present": {
-            "type": "integer", 
-            "description": "Output 1 if a shelter is present, 0 if not."
+            "type": "number", 
+            "description": "A decimal value between 0.0 and 1.0 representing confidence that there IS a shelter. "
+            "1.0 means with ALL certainty a shelter EXISTS "
+            "0.0 means there is no possibility of a shelter AT ALL"
         },
         "shelter_number": {"type": "integer"},
 
         "bench_present": {
-            "type": "integer", 
-            "description": "Output 1 if a bench is present, 0 if not."
+            "type": "number", 
+            "description": "A decimal value between 0.0 and 1.0 representing confidence that there IS a bench. "
+            "1.0 means with ALL certainty a bench EXISTS "
+            "0.0 means there is no possibility of a bench AT ALL"
         },
         "bench_number": {"type": "integer"},
 
         "trash_can_present": {
-            "type": "integer", 
-            "description": "Output 1 if a trash can is present, 0 if not."
+            "type": "number", 
+            "description": "A decimal value between 0.0 and 1.0 representing confidence that there IS a trash can. "
+            "1.0 means with ALL certainty a trash can EXISTS "
+            "0.0 means there is no possibility of a trash can AT ALL"
         },
         "trash_can_number": {"type": "integer"},
         
@@ -254,17 +296,18 @@ response_schema = {
         "notes": {"type": "string"},
     },
     "required": [
-        "stop_id", "best_view", "selected_image_filename", "bus_stop_visible", "bus_stop_visibility_confidence", 
+        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "best_view", "bus_stop_visible", "bus_stop_visibility_confidence", 
         "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", 
         "shelter_number", "shelter_present",
         "bench_number", "bench_present",  
         "trash_can_number", "trash_can_present", "date",
         "street_lighting", "notes"
     ],
+    "additionalProperties": False
 }
 
 # ============================================================
-# LOGIC HELPERS & CHECKPOINTING
+# LOGIC HELPERS
 # ============================================================
 
 def make_image_part(path: Path):
@@ -306,6 +349,7 @@ def load_existing_results():
             
     return existing_results, processed_ids
 
+
 def write_csv(results):
     if not results: return
     keys = list(results[0].keys())
@@ -318,15 +362,40 @@ def save_json(results):
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4)
 
+def get_name_lat_long(stop_id):
+    # 1. Filter the dataframe where the "Stop Code" column matches your ID
+    stop_row = stops_df[stops_df["Stop Code"] == int(stop_id)]
+    
+    # 2. Safety check: Did we find the stop?
+    if stop_row.empty:
+        print(f"Error: Stop ID {stop_id} not found in CSV.")
+        return None, None
+        
+    # 3. Extract the exact values using .iloc[0] (which grabs the first matching row)
+    lat = stop_row.iloc[0]["Latitude"]
+    lon = stop_row.iloc[0]["Longitude"]
+    name = stop_row.iloc[0]["Stop Name"]
+    
+    return name, lat, lon
+
+
 # ============================================================
 # GEMINI CALL 
 # ============================================================
 
-def analyze_stop(stop_id: str, views: dict, pass_number: int = 1, previous_image_path: str = None) -> dict:
+def analyze_stop(stop_id: str, name: str, lat: float, lon: float, views: dict, pass_number: int = 1, previous_image_path: str = None) -> dict:
     
+    # 1. Dynamically select the correct prompt based on the pass number!
     active_prompt = PROMPT_PASS_1 if pass_number == 1 else PROMPT_PASS_2
+
+    text_context = (
+        f"\nStop ID: {stop_id}"
+        f"\nStop Name: {name}"
+        f"\nLatitude: {lat}"
+        f"\nLongitude: {lon}"
+    )
     
-    contents = [active_prompt, f"\nStop ID: {stop_id}\nReview the following {len(views)} images for this bus stop:\n"]
+    contents = [active_prompt, f"\nStop ID: {stop_id}\nReview the following {len(views)} images for this bus stop:\n", text_context]
     
     for view_name, path in views.items():
         contents.extend([
@@ -361,17 +430,18 @@ def analyze_stop(stop_id: str, views: dict, pass_number: int = 1, previous_image
         old_path = Path(previous_image_path)
         if old_path.exists() and old_path.name != destination.name:
             old_path.unlink()
+            print(f"    [Deleted previous Pass 1 image: {old_path.name}]")
 
     shutil.copy2(selected_path, destination)
     result["final_image_path"] = str(destination)
 
     return result
-# ============================================================
-# 15-THREAD PRODUCTION EXECUTION WITH SMART CLEANUP
-# ============================================================
 
+# ============================================================
+# AUTOMATIC MULTI-THREADED PIPELINE
+# ============================================================
 def main():
-    print("=== Bus Stop Automatic Production Pipeline ===")
+    print("=== Bus Stop Automatic Multi-Threaded Pipeline ===")
     print(f"Model: {MODEL}")
     
     # Load and group all available baseline images
@@ -389,68 +459,73 @@ def main():
         return
         
     print(f"Found {len(processed_ids)} already processed stops.")
-    print(f"Starting CONCURRENT processing for {len(stops_to_process)} remaining stops...")
+    print(f"Starting multi-threaded processing for {len(stops_to_process)} remaining stops (10 threads)...")
     
-    # Define max threads. 15-20 is usually the maximum before hitting rate limits.
-    MAX_THREADS = 15 
-    print(f"Spinning up {MAX_THREADS} threads...\n")
+    # Sort the stop IDs numerically
+    sorted_stop_ids = sorted(stops_to_process.keys(), key=lambda x: int(x))
 
-    # Helper function for the threads to run
-    def process_stop(stop_id, views):
-        print(f"Processing Stop {stop_id} (Pass 1)...")
-        result = analyze_stop(stop_id, views, pass_number=1)
+    # Worker function to handle API calls for a single stop
+    def process_single_stop(stop_id):
+        name, lattitude, longitude = get_name_lat_long(stop_id)
+        views = stops_to_process[stop_id]
+        print(f"[{stop_id}] Starting Fast Track...")
         
-        # Trigger fallback if needed
-        if result.get("bus_stop_visible") in ["No", "Unclear"]:
-            fallback_views = fetch_local_views(stop_id, FALLBACK_DIR)
+        try:
+            result = analyze_stop(stop_id, name, lattitude, longitude, views, pass_number=1)
             
-            if len(fallback_views) < 8:
-                fallback_views = fetch_stop_images(stop_id)
-            
-            if fallback_views:
-                previous_img = result.get("final_image_path")
-                result = analyze_stop(stop_id, fallback_views, pass_number=2, previous_image_path=previous_img)
+            # Trigger fallback if needed
+            if result.get("bus_stop_visible") in ["No", "Unclear"]:
+                print(f"[{stop_id}] Triggered 8-Heading Fallback...")
+                fallback_views = fetch_local_views(stop_id, FALLBACK_DIR)
                 
-                # --- SMART CLEANUP LOGIC ---
-                # If Pass 2 successfully found a bus stop, delete the 8 fallback images
-                # (The 'best_view' image was already safely copied to final_images by analyze_stop)
-                if result.get("bus_stop_visible") == "Yes":
-                    for img_path in fallback_views.values():
-                        if img_path.exists():
-                            img_path.unlink()
-                    print(f"  -> [Cleanup] Stop {stop_id} found. Deleted 8-heading fallback images to save space.")
-                    
-        # Enforce "MANUAL REVIEW" text if Pass 2 still fails
-        current_notes = result.get("notes", "")
-        if result.get("bus_stop_visible") in ["No", "Unclear"] and "MANUAL REVIEW REQUIRED" not in current_notes.upper():
-            result["notes"] = "MANUAL REVIEW REQUIRED: " + current_notes
+                if len(fallback_views) < 8:
+                    print(f"[{stop_id}] Scraping API for fallback...")
+                    fallback_views = fetch_stop_images(stop_id)
+                
+                if fallback_views:
+                    previous_img = result.get("final_image_path")
+                    result = analyze_stop(stop_id, name, lattitude, longitude, fallback_views, pass_number=2, previous_image_path=previous_img)
+                else:
+                    print(f"[{stop_id}] No fallback images found.")
             
-        return stop_id, result
+            # Enforce "MANUAL REVIEW" text if Pass 2 still fails
+            current_notes = result.get("notes", "")
+            if result.get("bus_stop_visible") in ["No", "Unclear"] and "MANUAL REVIEW REQUIRED" not in current_notes.upper():
+                result["notes"] = "MANUAL REVIEW REQUIRED: " + current_notes
 
-    # Execute all stops concurrently
-    with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
+            return result
+            
+        except Exception as e:
+            print(f"[{stop_id}] Error: {e}")
+            return None
+
+    # Execute API calls concurrently using 10 threads
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        # Submit all tasks to the thread pool
         future_to_stop = {
-            executor.submit(process_stop, stop_id, views): stop_id 
-            for stop_id, views in stops_to_process.items()
+            executor.submit(process_single_stop, stop_id): stop_id 
+            for stop_id in sorted_stop_ids
         }
         
+        # Process them as they finish (safely saving in the main thread)
         for future in as_completed(future_to_stop):
             stop_id = future_to_stop[future]
             try:
-                _, result = future.result()
-                
-                # Append, sort, and save live data safely
-                results.append(result)
-                results_sorted = sorted(results, key=lambda x: int(x["stop_id"]))
-                write_csv(results_sorted)
-                save_json(results_sorted)
-                
-                print(f"✅ Finished stop {stop_id} | Final Classification: {result.get('bus_stop_visible')}")
-                
+                result = future.result()
+                if result:
+                    results.append(result)
+                    
+                    # Sort and save live data
+                    results_sorted = sorted(results, key=lambda x: int(x["stop_id"]))
+                    write_csv(results_sorted)
+                    save_json(results_sorted)
+                    
+                    print(f"[{stop_id}] Finished. Final Classification: {result.get('bus_stop_visible')}")
             except Exception as e:
-                print(f"❌ Error processing stop {stop_id}: {e}")
+                print(f"[{stop_id}] Thread resulted in an exception: {e}")
 
     print("\nPipeline Finished successfully.")
+
 
 if __name__ == "__main__":
     main()
