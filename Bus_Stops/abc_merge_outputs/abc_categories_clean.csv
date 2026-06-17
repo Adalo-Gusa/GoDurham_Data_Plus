@@ -1,0 +1,904 @@
+stop_id,Current Cleaning Category,abc_stop_name
+6291,A,Glenn View Station at Walmart
+5445,A,Raynor St at The Village (WB)
+1406,A,Renaissance Pkwy at Southpoint Mall
+6146,A,Fayetteville St at Pilot St (NB)
+5148,A,E Main St at Alston Ave (WB)
+5663,A,New Hope Commons
+6203,A,Horton Rd at Guess Rd (Harris Teeter)
+5513,A,Roxboro Rd at Horton Rd
+5394,A,Chapel Hill Rd at Palmer St (EB)
+6297,A,Roxboro Rd at Liberty St
+6068,A,Erwin Rd at Downing St (WB)
+6095,A,Duke Regional Hospital (SB)
+6620,A,Garrett Rd at Durham-Chapel Hill Blvd (
+6309,A,Dillard St at E Main St (Urban Ministri
+6104,A,Fulton St at Erwin Rd (Duke Hospital)
+6489,A,Raynor St at The Village (EB)
+5654,A,Horton Rd at Roxboro Rd
+5653,A,Fayetteville St at Riddle Rd (NB)
+6379,A,Broad St at Main St (Whole Foods)
+5793,A,Fayetteville Rd at Crooked Creek Pkwy
+5822,A,NC 55 at NC 54 (NB)
+6257,A,Fayetteville St at Cook Rd (Hillside HS)
+5848,A,Flowers Dr at Duke Gardens (SB)
+6689,A,Brier Creek Pkwy at Skyland Ridge Pkwy
+6012,A,Erwin Rd at Fulton St (Duke University
+5105,A,Duke Regional Hospital (NB)
+5280,A,E Main St at Dillard St (EB)
+5896,A,Roxboro Rd at Old Oxford Rd (SB)
+6607,A,Rose of Sharon at Riverside High School
+5549,A,Fayetteville St at Linwood Ave
+6591,A,S Roxboro St at Shoppes at Hope Valley
+5261,A,University Dr at Westgate Dr (Parkway P
+6383,A,E Main St at Morning Glory Ave (Golden
+5127,A,Seven Oaks Rd at Riverview Shopping Center
+5253,A,Holloway St at Brye St (WB)
+5741,A,E Main St at Roxboro St (WB)
+5733,A,Lawson St at Wabash St (WB)
+6277,A,S Alston Ave at Falls Pointe Apts (
+5829,A,Fayetteville St at Pilot St (SB)
+5519,A,University Dr at Hill St (Forest Hills
+5561,A,Leon St at N Buchanan Blvd (EB)
+6491,A,E Main St at Stokes St (EB)
+5671,A,Holloway St at Elm St (WB)
+5743,A,Trent Dr at Duke Hospital South (EB)
+6551,A,Morreene Rd at Glasson St (SB)
+5754,A,Chapel Hill Rd at Lakewood Ave (Shoppin
+6435,A,Holloway St at Alma St
+5773,A,Lawson St at Durham Tech Community Coll
+5331,A,Dearborn Dr at Old Oxford Rd (SB)
+5245,A,Holloway St at Alston Ave (EB)
+5897,A,Club Blvd at Dollar Ave (Northgate Mall
+5451,A,Olympic Ave at Roxboro Rd
+6226,A,TW Alexander Dr at Glenwood Ave
+5908,A,Chapel Hill Rd at House St
+6398,A,Capps St at S Alston Ave (WB)
+5778,A,Hillsborough Rd at Lawndale Ave (WB)
+6684,A,North Pointe Dr at Woodmont Dr (EB)
+1901,A,McFarland Dr at Witherspoon Blvd (Patte
+5573,A,Holloway St at Elizabeth St (EB)
+6622,A,Morehead Ave at Duke St (EB)
+6493,A,Willard St at Blackwell St (EB)
+5224,A,Fayetteville St at Burlington Ave (NB)
+5436,A,Meriwether Dr at Pickwick Trail (SB)
+6018,A,Hillsborough Rd at Lawndale Ave (Food L
+5931,A,Fayetteville St at Brant St (NCCU)
+5811,A,Service Rd at Davidson Ave (SB)
+6008,A,Angier Ave at Beldon Dr
+6333,A,American Dr at Constitution Dr
+6272,A,TW Alexander Dr at Miami Blvd (WB)
+6110,A,North Pointe Dr at Broad St (EB)
+6256,A,Fayetteville St at Cook Rd (SB)
+6077,A,Fayetteville St at Eagle Campus Dr
+5569,A,Hillsborough Rd at LaSalle St (Durham F
+5907,A,Fayetteville St at Piedmont Ave (NB)
+5505,A,Holloway St at Alston Ave (WB)
+5479,A,Cornwallis Rd at Weaver St
+5310,A,Angier Ave at Guthrie Ave (WB)
+5332,A,University Dr at Shannon Rd (EB)
+5801,A,Broad St at Markham Ave (SB)
+6579,A,NC 54 at Garrett Rd (EB)
+6393,A,Holloway St at Hyde Park Ave (WB)
+6490,A,Holloway St at Elizabeth St (WB)
+5080,A,Fayetteville St at Homeland Ave (NB)
+6177,A,Lawson St at Sima Ave (WB)
+5689,A,S Roxboro St at Umstead St (NB)
+6618,A,Morehead Ave at Duke St (WB)
+5156,A,Chapel Hill Rd at Bivins St (EB)
+5898,A,Holloway St at Driver St (WB)
+5265,A,E Main St at Blacknall St (WB)
+5165,A,Erwin Rd at Downing St (EB)
+5507,A,Chapel Hill St at Gregson St (WB)
+5106,A,Erwin Rd at Research Dr
+6694,A,Jackson St at Duke St (WB)
+6109,A,North Pointe Dr at North Pointe Shoppin
+5121,A,University Dr at Weymouth St (Near)
+6637,A,Fayetteville Rd at MLK Pkwy (SB)
+5226,A,Roxboro Rd at Old Oxford Rd (Oxford Com
+5634,A,Roxboro Rd at St Paul St
+6631,A,TW Alexander Dr at Page Rd (WB)
+5530,A,Cornwallis Rd at Century Oaks Dr (NB)
+5292,A,Hillsborough Rd at Cole Mill Rd (WB)
+6092,A,Hardee St at Cheek Rd (SB)
+5278,A,Ninth St at Safeway St
+5184,A,Service Rd at Davidson Ave (NB)
+5568,A,Meriwether Dr at Old Oxford Rd (SB)
+6225,A,Brier Creek Pkwy at Little Brier Creek
+5851,A,Lawson St at Ridgeway Ave
+5806,A,Murray Ave at Broad St
+5337,A,Lakewood Ave at Heritage Square
+6248,A,Rigsbee Ave at Seminary St
+5900,A,Chapel Hill St at Kent St (EB)
+6506,A,E Main St at Queen St (WB)
+5286,A,Duke University Rd at Underwood Ave (EB
+6023,A,Fayetteville St at Lawson St (NCCU)
+6126,A,Chalk Level Rd at Horton Rd (WB)
+6167,A,Chapel Hill Rd at Colonial Apts (NB)
+5407,A,Tom Wilkinson Rd at Northern High School
+5580,A,Fayetteville St at Burlington Ave (SB)
+5465,A,Broad St at Markham Ave (NB)
+6252,A,Renaissance Pkwy at Renaissance Village
+6305,A,Chapel Hill St at Main St
+5133,A,University Dr at Westgate Dr (WB)
+5708,A,Angier Ave at Hoover Rd (WB)
+5677,A,Broad St at Guess Rd (SB)
+6527,A,Dowd St at Mangum St
+5899,A,Briggs Ave at Person St (NB)
+5819,A,E Main St at Dillard St (WB)
+5033,A,Roxboro Rd at Bush Dr
+5415,A,Duke St at North Duke Crossing
+6016,A,Lawson St at Bacon St (WB)
+6650,A,Roxboro St at Frasier St
+5544,A,Fayetteville St at Homeland Ave (SB)
+5039,A,Fayetteville St at Piedmont Ave (SB)
+5126,A,Avondale Dr at E Knox St (SB)
+5575,A,Roxboro St at Charles St
+6154,A,Roxboro St at Cornwallis Rd
+5590,A,Hillandale Rd at Croasdaile Crossing
+5435,A,NC 55 at Alston Ave (NCCU)
+5344,A,Chapel Hill Rd at Morehead Ave (NB)
+6382,A,E Main St at Roxboro St (EB)
+6494,A,Blackwell St at Forest Hills Apts (NB)
+5484,A,Duke University Rd at Underwood Ave (WB
+6505,A,E Main St at Elizabeth St
+5341,A,Chapel Hill Rd at University Dr (NB)
+5940,A,Hardee St at Benning St (SB)
+6335,A,Hillsborough Rd at Cole Mill Rd (CVS)
+5396,A,Fayetteville St at Red Oak Ave (NB)
+5169,B,Morehead Ave at Moreland Ave (EB)
+5570,B,Garrett Rd at Durham-Chapel Hill Blvd (
+5690,B,NC 54 at NC 55 (EB)
+5701,B,Fayetteville St at Price Ave
+6495,B,Martin Luther King Jr Pkwy at Bay Point
+5718,B,LaSalle St at Campus Walk Dr (Holly Hil
+6663,B,Fayetteville Rd at Hillside High School
+6317,B,Pettigrew St at Mangum St (EB)
+5999,B,Chapel Hill Rd at W Cornwallis Rd (NB)
+6306,B,E Main St at Corcoran St (EB)
+6390,B,Main St at Broad St (WB)
+5864,B,University Dr at Hill St
+5983,B,Duke St at Kinder Care
+5233,B,Freeman Rd at Clayton Rd (Southern HS)
+5313,B,Alston Ave at Lawson St (SB)
+5162,B,Willard St at Yancey St (Ramada Inn)
+6387,B,Main St at Gregson St (WB)
+5118,B,Martin Luther King Jr Pkwy at Lake Camp
+6640,B,Constitution Dr at Neal Rd
+6658,B,E Main St at Angier Ave
+5063,B,NC 54 at Residence Inn Blvd (WB)
+5518,B,Fayetteville St at Pekoe St
+6486,B,Hardee St at Landon St (SB)
+5770,B,LaSalle St at Hillsborough Rd (Tire Kin
+5210,B,Martin Luther King Jr Pkwy at Shannon R
+6204,B,Guess Rd at Horton Rd (Walgreens)
+6307,B,E Main St at Mangum St (EB)
+5957,B,Duke University Rd at Chapel Hill Rd
+5646,B,Roxboro Rd at Davidson Ave (SB)
+5198,B,Holloway St at Hyde Park Ave (EB)
+5862,B,Cornwallis Rd at Bainbridge Dr (NB)
+5420,B,E Main St at Corcoran St (WB)
+5980,B,University Dr at Martin Luther King Jr
+5397,B,Fayetteville St at Dunbar St
+6647,B,LaSalle St at Kangaroo St (The Heights
+5578,B,Fayetteville St at Simmons St
+6197,B,Witherspoon Blvd at McFarland Dr (Patte
+5593,B,Lednum St at Murray Ave
+6076,B,Douglas St at Pratt St
+6053,B,Lawson St at S Briggs Ave (Durham Excha
+5019,B,Club Blvd at Chandlers Garage
+6484,B,Broad St at Forest Rd (SB)
+6036,B,University Dr at Martin Luther King Jr
+6548,B,Morreene Rd at American Dr (SB)
+6576,B,Fayetteville St at Riddle Rd (SB)
+5998,B,Green St at Iredell St
+6279,B,NC 55 at Golden Corral (NB)
+5291,B,Holloway St at Chester St
+5722,B,Carver St at Danube Ln (Carver Creek Ap
+5508,B,Chapel Hill Rd at Morehead Ave (SB)
+5004,B,Alston Ave at Main St
+1892,B,Fayetteville Rd at Renaissance Pkwy
+6024,B,LaSalle St at Duke Manor Apts (SB)
+6552,B,Morreene Rd at Erwin Rd
+5042,B,University Dr at Weymouth St (WB)
+5319,B,Old Oxford Rd at Danube Ln (EB)
+6729,B,DANUBE LN AT HEBRON RD
+5119,B,Roxboro Rd at Ellerbee St (NB)
+6246,B,Geer St at Rigsbee Ave
+6446,B,S Alston Ave at Capitola Dr (SB)
+5679,B,Crutchfield St at Crabtree Ave
+5084,B,Old Farm Rd at Roxboro St (JFK Towers)
+6439,B,Fayetteville St at Umsted St
+5460,B,Erwin Rd at LaSalle St (EB)
+5599,B,Riddle Rd at Fayetteville Rd
+6598,B,Lawson Ave at Fayetteville St
+5433,B,Main St at Morgan St (WB)
+5209,B,Foushee St at Avondale Dr (WB)
+6241,B,Rigsbee Ave at Seminary St
+5234,B,Fayetteville Rd at Woodcroft Pkwy (NB)
+6447,B,Cornwallis Rd at Laurel Oaks (NB)
+5909,B,Chapel Hill Rd at Colonial Apts (SB)
+5111,B,Lawson St at Merrick St (Pearson Cafete
+5787,B,Roxboro Rd at Argonne Dr (SB)
+6125,B,Horton Rd at Duke St
+6308,B,Chapel Hill St at Rigsbee Ave
+6330,B,Lakewood Ave at Fayetteville St
+5296,B,NC 55 at Cornwallis Rd
+5391,B,Fayetteville Rd at Geneva Dr (NB)
+6153,B,Fayetteville Rd at Dunhill Dr (Pine Rid
+6264,B,Holloway St at Rummel St
+6430,B,W Club Blvd at Onslow St (EB)
+5468,B,Hillsborough Rd at LaSalle St (Auto Zon
+5918,B,University Dr at Academy Rd (EB)
+5205,B,Angier Ave at Vine St (WB)
+5473,B,Old Oxford Rd at Dearborn Dr (WB)
+6032,B,Fayetteville St at Cecil St (NB)
+6039,B,E Main St at Goley St (EB)
+6299,B,Pettigrew St at Mangum St (WB)
+5008,B,S Alston Ave at Massey Ave (NB)
+5195,B,Mineral Springs Rd at Wake Forest Hwy
+6632,B,S Roxboro St at Chestnut St (NB)
+5728,B,Fayetteville St MLK Jr. Pkwy (NB)
+5273,B,Roxboro Rd at Hewitt St
+6075,B,Westgate Dr at South Square (Burger Kin
+5914,B,Morehead Ave at Carroll St (EB)
+6350,B,Freeman Rd at Mineral Springs Rd
+5222,B,Duke St at Morehead Ave (Henderson Towe
+5805,B,Fayetteville St at Red Oak Ave (SB)
+5973,B,NC 55 at Meridian Pkwy (NB)
+5363,B,NC 54 at Fayetteville Rd (EB)
+5818,B,Holloway St at Hoover Rd (EB)
+6161,B,Dowd St at Alston Ave (WB)
+6649,B,Martin Luther King Jr Pkwy at Lakeside
+5989,B,Avondale Dr at Trinity Ave (SB)
+5274,B,Holloway St at Hoover Rd (WB)
+6550,B,Morreene Rd at Sherwood Dr (SB)
+6592,B,Martin Luther King Jr Pkwy at Cook Rd (
+5262,B,NC 55 at Dakota St (SB)
+5142,B,Gregson St at Trinity Ave
+6608,B,Horton Rd at Guess Rd (Rite-Aid)
+5113,B,Blackwell St at Forest Hills Apts (SB)
+5475,B,Club Blvd at Stephenson St
+6476,B,Fayetteville Rd at Timothy Ave (WG Pear
+5497,B,Roxboro St at Erie St (CC Spaulding Ele
+6061,B,Ross Rd at Fernando St
+5764,B,Dearborn Dr at Ader St
+5649,B,Tower Blvd at Durham-Chapel Hill Blvd (
+5358,B,Holloway St at Bunn Terrace
+6521,B,Roxboro St at Pacific Ave (SB)
+6442,B,Lakewood Ave at Roxboro St (Southside L
+5179,B,Roxboro St at Lodge St (Hillside Park)
+1075,B,University Dr at Ivy Creek Blvd
+1558,B,Slater Rd at Creekstone Dr (Duke Medicine)
+5994,B,SW Durham Dr at Durham-Chapel Hill Blvd
+6172,B,Hardee St at Holloway St
+5981,B,N Alston Ave at Geer St (SB)
+6067,B,Olympic Ave at Roxboro Rd
+5526,B,Hillsborough Rd at Erwin Square
+6558,B,Morreene Rd at Tremont Dr (SB)
+6657,B,Morreene Rd at Glasson St (NB)
+5511,B,Hillsborough Rd at US 15-501 SB (Krispy
+6629,B,TW Alexander Dr at Page Rd (EB)
+5639,B,Main St at Morgan St (EB)
+5429,B,Hillsborough Rd at US 15-501 SB (Wendys)
+5559,B,Willard St at Blackwell St (South Parki
+6196,B,University Dr at Myra St (EB)
+5225,B,Fayetteville St at Brant St (NB)
+6059,B,Chapel Hill Rd at Chesterfield Apts
+5311,B,Roxboro Rd at Maynard Ave (SB)
+5661,B,Holloway St at Driver St (EB)
+5335,B,Angier Ave at Guthrie Ave (EB)
+5403,B,Carver St at Patrick Henry Dr (WB)
+5798,B,Durham-Chapel Hill Blvd at Garrett Rd
+6590,B,Martin Luther King Jr Pkwy at Cook Rd (
+5845,B,Hillandale Rd at Carver St (Durham Publ
+5447,B,Chapel Hill Rd at Palmer St (WB)
+5627,B,Holloway St at Spruce St
+5876,B,Ross Rd at Melbourne St
+5215,B,Fayetteville St at Lawson St (SB)
+5285,B,Chapel Hill Rd at Valley Terrace (SB)
+5947,B,E Weaver St at Cornwallis Rd
+6270,B,TW Alexander Dr at Creekside Townhomes
+5102,B,Shirley St at Crest St
+6599,B,Lawson St at Concord St (WB)
+5996,B,Meriwether Dr at Old Oxford Rd (NB)
+6258,B,Fayetteville Rd at Tralea Dr (Mt Zion C
+6169,B,LaSalle St at Duke Manor Apts (NB)
+5091,B,E Club Blvd at Glenbrook Dr (SB)
+5357,B,Fayetteville St at Cecil St (SB)
+5498,B,Holloway St at Guthrie Ave (EB)
+6597,B,Lawson Ave at NCCU Track (WB)
+5647,B,Angier Ave at Bingham St (WB)
+6315,B,Roxboro Rd at Foushee St
+5305,B,E Main St at Mangum St (WB)
+5744,B,Holloway St at Brye St (EB)
+6138,B,Hearthside St at Bacon St
+5138,B,Angier Ave at Driver St (WB)
+6265,B,Holloway St at Lynn Rd
+6057,B,Chapel Hill Rd at Huron St
+6000,B,NC 54 at Pine Glen Trail (WB)
+5345,B,University Dr at BB&T Plaza
+5300,B,Leon St at Haverford St (EB)
+6344,B,Holloway St at Herbert St (WB)
+5157,B,Fulton St at Pratt St
+5478,B,E Club Blvd at Miriam Cir
+5565,B,Fayetteville St at Elmira Ave (Fayettev
+6549,B,Morreene Rd at Campus Walk Ave (SB)
+5078,B,Trent Dr at Duke Hospital South (WB)
+5531,B,Erwin Rd at LaSalle St (WB)
+6283,B,NC 55 at Allendown Dr (NB)
+5732,B,Hillsborough Rd at Carolina Ave
+6487,B,Hardee St at Delano St (SB)
+5517,B,Fayetteville Rd at Southpoint Crossing
+5043,B,Holloway St at Adams St (EB)
+1553,B,Erwin Rd at Towerview Rd
+6322,B,Cornwallis Rd at Roxboro Rd
+5877,B,S Roxboro St at Umstead St (SB)
+6578,B,NC 751 at NC 54 (Hope Valley Commons Pa
+6182,B,Morgan St at Mangum St
+6164,B,University Dr at Shannon Rd (WB)
+6380,B,Main St at Campus Dr (EB)
+5604,B,Crest St at Zelko Ct
+5954,B,Dowd St at Hazel St (WB)
+5354,B,NC 55 at Odyssey Dr (NB)
+6247,B,Rigsbee Ave at Corporation St (SB)
+6079,B,Chapel Hill St at Arnette Ave (WB)
+6639,B,Neal Rd at Wildberry Ln(EB)
+5730,B,Chapel Hill Rd at Crosswind Ave (Lakewo
+790001,B,DUKE ST AT HOLT SCHOOL RD
+5841,B,Fayetteville St at Cornwallis Rd (SB)
+5115,B,Alston Ave at Dayton St (SB)
+1866,C,NC 54 at Triangle Dr (EB)
+6603,C,New Castle Rd at Wyldewood Rd (NB)
+5281,C,Dearborn Dr at Maplewood Dr (SB)
+6627,C,NC 55 at Service Station
+5816,C,Fayetteville St at Dunstan St
+6473,C,Chapel Hill Rd at Valley Terrace (NB)
+5139,C,Gregson St at Dacian Ave
+5700,C,Roxboro St at Summit St
+6210,C,Hillandale Rd at Pinetree Ct
+5584,C,Hardee St at Fiske St
+5499,C,Meriwether Dr at Pickwick Trail (NB)
+5340,C,Morehead Ave at Kent St (WB)
+5648,C,LaSalle St at Campus Walk Ave (Belmont
+6605,C,Horton Rd at Delbert Ave (WB)
+6530,C,Junction Rd at Ross Rd
+5325,C,Meriwether Dr at Carver Pond Apts
+6730,C,WEST AVE AT HEBRON RD
+6336,C,Gregson St at Main St (Brightleaf Squar
+5746,C,Roxboro St at Normandy St
+790005,C,DANUBE LN AT BEN FRANKLIN BL
+5228,C,Fulton St at Erwin Rd (VA Hospital)
+1805,C,NC 54 at Amhurst St
+5881,C,NC 54 at Fayetteville Rd (Homestead Mar
+5489,C,Dearborn Dr at Wiley Ave
+5404,C,E Main St at Hyde Park Ave (WB)
+6444,C,Cornwallis Rd at Campus Crossings (SB)
+5869,C,Broad St at F St (NC School of Science
+5154,C,Alston Ave at Durham Freeway (SB)
+5298,C,Chapel Hill Rd at University Dr (SB)
+5075,C,Milton Rd at Eno Valley Elementary (SB)
+6595,C,Alston Ave at Riddle Rd (SB)
+6424,C,W Club Blvd at Onslow St (Walltown Park
+5067,C,Mangum St at Geer St
+5097,C,Roxboro Rd at Murray Ave
+5178,C,Club Blvd at Northgate Mall
+6573,C,Hardee St at Cheek Rd (NB)
+5579,C,North Pointe Dr at North Pointe Shopping
+5490,C,Chapel Hill Rd at Ward St
+5202,C,Roxboro Rd at Edwards St
+6475,C,Fayetteville Rd at Geneva Dr (Southpoin
+6014,C,Roxboro St at Holloway St
+5131,C,NC 54 at Seasons of Southpoint (EB)
+5453,C,Cornwallis Rd at Fayetteville Rd
+6375,C,Chapel Hill Rd at W Cornwallis Rd (Yate
+5044,C,Duke St at Harper Pl
+5158,C,Roxboro St at Lawson St (NB)
+5326,C,Chapel Hill St at Arnette Ave (EB)
+6604,C,Stadium Dr at Wyldewood Rd (NB)
+5128,C,Roxboro Rd at Monk Rd (SB)
+6267,C,TW Alexander Dr at Miami Blvd (EB)
+5603,C,Hardee St at Landon St (NB)
+6278,C,NC 55 at Sedwick Rd (NB)
+5145,C,Erwin Rd at Morreene Rd
+6507,C,E Geer St at Faucette Ave (WB)
+6045,C,LaSalle St at Blue Crest Ln (Blue Crest
+5030,C,Duke St at Main St
+5742,C,Mangum St at Parrish St
+6163,C,Chapel Hill Rd at W Cornwallis Rd (SB2)
+5379,C,University Dr at Chapel Hill Rd (Coloni
+5859,C,Martin Luther King Jr Pkwy at Lake Cook
+6129,C,New Castle Rd at Wyldewood Rd (SB)
+6207,C,Guess Rd at Bogarde St
+6503,C,E Main St at Hood St (Durham Police Dep
+5161,C,NC 55 at Meredith Dr (NB)
+5944,C,Freeman Rd at Obsidian Way (Southern HS
+6116,C,North Pointe Dr at Woodmont Dr (WB)
+6602,C,New Castle Rd at Foxfire Apartments (NB
+6538,C,W Enterprise St at E Forest Hills Blvd
+5342,C,Morehead Ave at Carroll St (WB)
+5191,C,Fayetteville Rd at Woodcroft Pkwy (SB)
+5132,C,Roxboro Rd at Carver St
+6221,C,Brier Leaf Ln at Brier Creek Pkwy
+6426,C,Broad St at Guess Rd (NB)
+5238,C,Avondale Dr at E Knox St (NB)
+6474,C,Fayetteville Rd at Torrey Pine Ln
+5110,C,Fayetteville Rd at Wortley Dr
+5480,C,Flowers Dr at Duke Gardens (NB)
+5088,C,S Alston Ave at Massey Ave (SB)
+5966,C,Chapel Hill Rd at Vesson Ave
+5716,C,Hillsborough Rd at Hicks St
+5740,C,Chandler Rd at Chance Dr
+5693,C,Bedford St at Balmoray Ct
+1160,C,NC 54 at Blanchard Rd (EB)
+6633,C,Neal Rd at Bishopstone Dr
+5600,C,Carver St at Commons Blvd (WB)
+5786,C,LaSalle St at Hillsborough Rd (NB)
+5703,C,Guess Rd at Carver St
+5557,C,Morreene Rd at Andrews Rd
+5552,C,NC 55 at Meridian Pkwy (SB)
+5255,C,Erwin Rd at Lambeth Cir (Erwin Terraces
+1072,C,Old Chapel Hill Rd at Garrett Rd (EB)
+789985,C,HILLANDALE RD AT BERTLAND AV
+5721,C,Chapel Hill Rd at Vineyard St
+6147,C,Fayetteville St at Cornwallis Rd (NB)
+6339,C,NC 55 at Odyssey Dr (SB)
+6251,C,Renaissance Shopping Center
+6139,C,Hearthside St at Welch Pl
+6198,C,Mt. Moriah Rd at Danziger Dr
+5550,C,Hardee St at Delano St (Hardee Terrace)
+6628,C,Alston Ave at Dayton St (NB)
+6665,C,TW Alexander Dr at Center Point (WB)
+5409,C,Clayton Rd at Chandler Rd
+5503,C,North Pointe Dr at Red Roof Inn (EB)
+5149,C,NC 55 at Riddle Rd (NB)
+6293,C,E Geer St at Landon Farms Ln (WB)
+5100,C,Weaver St at Weaver St Park
+5207,C,LaSalle St at Grace Healthcare
+6565,C,Angier Ave at Vine St (EB)
+5099,C,Carver St at Patrick Henry Dr (EB)
+6448,C,Cornwallis Rd at Campus Crossings (NB)
+6303,C,Angier Ave at Miami Blvd (SB)
+5572,C,Cornwallis Rd at Bainbridge Dr (SB)
+5964,C,Roxboro Rd at Maynard Ave (NB)
+5017,C,Chapel Hill Rd at McGehee St (NB)
+5444,C,Dowd St at Roxboro Rd (EB)
+5932,C,Chalk Level Rd at Horton Rd (EB)
+5971,C,University Dr at Myra St (WB)
+6577,C,NC 751 at Southpoint Autopark Dr
+5314,C,North Pointe Dr at Broad St (WB)
+6433,C,Hardee St at Benning St (Naples Terrace
+6479,C,Holloway St at Ganyard Farm Way (Dollar
+5594,C,Hillsborough Rd at Trent Dr (WB)
+6531,C,Pettigrew St at Roxboro St (WB)
+6348,C,Holloway St at Durham Ridge Assisted Li
+5387,C,Cornwallis Rd at Yorktown Ave (NB)
+5020,C,Fayetteville Rd at Laurel Springs Dr
+1893,C,NC 54 at The Hamptons Apts (EB)
+5767,C,NC 55 at Cherry Dr
+5211,C,Fulton St at Shirley St
+5021,C,Chapel Hill Rd at W Cornwallis Rd (SB1)
+5824,C,Lawson St at Concord St (EB)
+6242,C,Rigsbee Ave at Corporation St (NB)
+5960,C,Gary St at N Miami Blvd (NB)
+5794,C,N Alston Ave at Lee St (SB)
+6275,C,S Alston Ave at Kestrel Heights School
+5334,C,Old Oxford Rd at Danube Ln (WB)
+5803,C,Milton Rd at Fire Department
+5684,C,W Club Blvd at Clarendon St
+5948,C,Enterprise St at Scout Dr
+5141,C,Avondale Dr at Trinity Ave (NB)
+5711,C,N Alston Ave at Lee St (NB)
+5193,C,Midvale Rd at Bedford St
+5883,C,Mangum St at W Seminary Ave
+6158,C,Dowd St at Gurley St (WB)
+5093,C,University Dr at South Square Mall
+6224,C,Brier Leaf Ln at Little Brier Creek Ln
+6609,C,Horton Rd at Delbert Ave (EB)
+1781,C,NC 54 at Revere Rd (EB)
+5206,C,Lawson St at Rosewood St (Eastbound)
+5368,C,Meriwether Dr at E Carver St (SB)
+5837,C,Roxboro Rd at Infinity Rd
+6660,C,Taylor St at Gary St (WB)
+6664,C,TW Alexander Dr at Fun Park Dr
+5857,C,Riddle Rd at Triangle Day Care (NB)
+5316,C,Lawson St at DTCC Public Safety (EB)
+6243,C,W Geer St at Rigsbee Ave
+5860,C,Roxboro Rd at Channing Ave (SB)
+1161,C,NC 54 at Residence Inn Blvd (EB)
+5370,C,Dearborn Dr at Martin St
+6073,C,Gary St at N Miami Blvd (SB)
+789999,C,DUKE ST AT HOLT SCHOOL RD
+5481,C,Roxboro Rd at Davidson Ave (NB)
+5533,C,University Dr at Old Chapel Hill Rd (EB
+4211711,C,DANUBE LN AT BEN FRANKLIN BL
+5734,C,Hillsborough Rd at Rutherford St
+5373,C,NC 54 at Barbee Rd (EB)
+5765,C,Hillsborough Rd at Rosehill Ave
+5838,C,Cornwallis Rd at Jan Ct
+5553,C,Milton Rd at Eno Valley Elementary (NB)
+6253,C,Highgate Dr at Audubon Lake Dr
+5185,C,Chapel Hill Rd at Pickett Rd (NB)
+6659,C,Taylor St at Gary St (EB)
+5633,C,Fayetteville Rd at Sutton Station
+6269,C,TW Alexander Dr at Roche Dr (LabCorp)
+5477,C,Ross Rd at Charlestowne Apts
+6162,C,Duke St at Cobb St
+5031,C,Carver St at Guess Rd
+5821,C,Holloway St at Briggs Ave
+6268,C,TW Alexander Dr at Center Point (EB)
+5880,C,Club Blvd at Glenbrook Dr
+5792,C,Lawson St at Rosewood St
+5756,C,Lakewood Ave at S Mangum St (EB)
+5401,C,Sima Ave at Lawson St
+5443,C,NC 54 at Revere Rd (WB)
+5060,C,Dearborn Dr at Ruth St
+5990,C,Durham-Chapel Hill Blvd at Car Wash
+5987,C,Otis St at Cecil St
+5591,C,Roxboro St at The Life Center of Durham
+5827,C,Angier Ave at Hoover Rd (EB)
+6572,C,Liberty St at Elizabeth St (EB)
+6466,C,New Castle Rd at Stadium Dr (Strawberry
+6255,C,Highgate Dr at NC 54
+1175,C,NC 54 at Fayetteville Rd (Duke Health)
+6638,C,Fayetteville Rd at MLK Pkwy (NB)
+5933,C,Riddle Rd at Triangle Day Care (SB)
+5854,C,Fayetteville Rd at Dunhill Dr (Triangle
+5564,C,Morreene Rd at Erwin Rd
+6031,C,Dowd St at Alston Ave (EB)
+6337,C,Cornwallis Rd at Laurel Oaks Dr (SB)
+5189,C,University Dr at Snowcrest Tr
+6501,C,Martin Luther King Jr Pkwy at Fayettevi
+5826,C,Roxboro Rd at Ellerbee St (SB)
+5938,C,S Roxboro St at Erie St (SB)
+5672,C,Fayetteville St at Timothy Ave (SB)
+5616,C,Cornwallis Rd at Yorktown Ave (SB)
+6137,C,Capps St at Bacon St (EB)
+5650,C,Durham-Chapel Hill Blvd at Hope Valley
+6263,C,Miami Blvd at Ellis Rd (Bethesda Elemen
+6157,C,Club Blvd at Lindbergh St
+5506,C,Lawson St at DTCC Library (WB)
+6345,C,Taylor St at Driver St (Holton Career C
+5269,C,Stadium Dr at Horton Rd
+1566,C,Slater Rd at S Miami Blvd (Zaxbys)
+5125,C,Hillsborough Rd at W Knox St
+5865,C,Chapel Hill Rd at McGehee St (SB)
+5064,C,Otis St at Red Oak Ave
+5282,C,Hillsborough Rd at W Main St
+5247,C,Fayetteville Rd at Juliette Dr (NB)
+5911,C,Fayetteville Rd at Obie Dr (NB)
+6338,C,NC 55 at Martin Luther King Jr Pkwy
+6316,C,W Morgan St at Foster St (Downtown YMCA
+5714,C,Morreene Rd at Sherwood Dr (NB)
+5717,C,Hillsborough Rd at Frazee Carpet
+5501,C,Chapel Hill Rd at Chapel Ridge Apts
+6048,C,Dearborn Dr at Ora Ave
+5870,C,Holloway St at Herbert St (EB)
+5797,C,Mineral Springs Rd at Sapphire St
+6499,C,Trent Dr at Erwin Rd (Clipp Research Bl
+6695,C,TW Alexander Dr at NC 55 (WB)
+5190,C,Nation Ave at Bedford St
+5921,C,Holloway St at Southerland St (WB)
+6052,C,Lawson St at Ridgeway Ave
+6523,C,Carver St at Danube Ln (EB)
+6142,C,Fayetteville St at Tralea Dr (SB)
+5355,C,NC 55 at Riddle Rd (SB)
+1171,C,NC 54 at Blanchard Rd (WB)
+789989,C,HILLANDALE RD AT SAMUEL DR
+5949,C,Dearborn Dr at Deer Run
+5399,C,Club Blvd at Duke St
+6136,C,Capps St at S Alston Ave (EB)
+6202,C,Horton Rd at Sugarwood Pl
+6003,C,Roxboro Rd at Bon Air Ave
+1914,C,University Dr at University Pl (EB)
+5360,C,Sima Ave at Dorothy Dr
+5686,C,Fayetteville Rd at Cook Rd (NB)
+5112,C,Angier Ave at Commonwealth St
+5329,C,Briggs Ave at Riddle Rd (NB)
+5645,C,E Club Blvd at Midland Ter
+6492,C,North Pointe Dr at Red Roof Inn (WB)
+5054,C,University Dr at Larchmont Dr
+5456,C,Shannon Rd at Martin Luther King Jr Pkw
+5985,C,Mangum St at Markham Ave
+6396,C,Briggs Ave at Person St (UniFirst Unifo
+5738,C,Lawson St at Alston Ave (EB)
+5802,C,Broad St at F St (NB)
+5419,C,Holloway St at Chandler Rd
+6273,C,Miami Blvd at Methodist St
+5768,C,NC 55 at Gaston Ave
+5002,C,Riddle Rd at Ancroft Ave (NB)
+6349,C,Mineral Springs Rd at Destrier Dr
+5183,C,James St at Durham Chapel Hill Blvd
+6319,C,Martin Luther King Jr Pkwy at Stratford
+5315,C,NC 55 at Carpenter Fletcher Rd (NB)
+6464,C,Roxboro Rd at Latta Rd
+5582,C,Angier Ave at East End Ave (WB)
+5377,C,Roxboro Rd at Monk Rd (NB)
+5598,C,Fayetteville Rd at Geneva Dr (SB)
+5884,C,Chapel Hill St at Brewster St
+5438,C,Duke St at Corporation St
+5833,C,Dearborn Dr at Usher St (Lakeview Schoo
+5626,C,New Castle Rd at FoxFire Apartments (SB
+6294,C,E Geer St at Midland Terrace (WB)
+5709,C,Roxboro Rd at Markham Ave (SB)
+6347,C,Taylor St at Driver St (EB)
+789994,C,BEN FRANKLIN BLVD AT WILLIAM
+5563,C,Duke St at Fairfield St
+5056,C,Lawson St at Sima Ave (EB)
+6389,C,Main St at Campus Dr (WB)
+5823,C,University Dr at Academy Rd (WB)
+5384,C,Lakewood Ave at S Mangum St (WB)
+6594,C,Alston Ave at Chenault Dr
+6366,C,Carver St at Commons Blvd (EB)
+5463,C,Fayetteville Rd at Obie Dr (SB)
+5943,C,University Dr at Weymouth St (Far)
+5769,C,Lawson St at Wabash St (EB)
+5820,C,Cornwallis Rd at Century Oaks Dr (SB)
+5532,C,S Alston Ave at Dupree St (NB)
+6575,C,Angier Ave at Bingham St (EB)
+5613,C,University Dr at Old Chapel Hill Rd (WB
+6054,C,Cornwallis Rd at Spring Ridge Apt
+5263,C,Gregson St at Green St
+5199,C,Angier Ave at Wrenn Rd (NB)
+5952,C,Chapel Hill St at Duke St (Durham Polic
+5022,C,N Alston Ave at Drew St (SB)
+5867,C,Fayetteville St at Utah Ave
+6731,C,DANUBE LN AT BEN FRANKLIN BL
+6314,C,Angier Ave at Midway Ave (WB)
+5719,C,Roxboro St at Knox St (SB)
+6593,C,S Roxboro St at Chestnut St (SB)
+5495,C,W Club Blvd at Clarendon St
+5992,C,E Club Blvd at Cascadilla St
+6040,C,Hillsborough Rd at Trent Dr (EB)
+6399,C,Capps St at Bacon St (WB)
+5596,C,Foushee St at Avondale Dr (EB)
+6635,C,E Geer St at Faucette Ave (EB)
+5144,C,Dowd St at Roxboro Rd (WB)
+6211,C,Hillandale Rd at Samuel Dr
+1499,C,Slater Rd at Page Rd (Coastal Credit Union)
+6274,C,NC 54 at S Alston Ave (EB)
+6610,C,Stadium Dr at Horton Rd
+6160,C,Dowd St at Hazel St (EB)
+5749,C,E Weaver St at Pilot St
+6290,C,E Geer St at Landon Farms Ln (EB)
+5129,C,NC 54 at The Hamptons Apts (WB)
+5353,C,Holloway St at Miami Blvd (EB)
+5045,C,Roxboro Rd at Edgewood Dr
+5023,C,Avondale Dr at E Markham Ave (SB)
+6086,C,E Main St at Hyde Park Ave (EB)
+6266,C,Miami Blvd at New Haven Dr
+6536,C,Ben Franklin Blvd at Medical Park Dr (V
+6681,C,SW Durham Dr at Durham-Chapel Hill Blvd
+5524,C,Mangum St at Trinity Ave
+5446,C,Guess Rd at Ellen St
+5928,C,James St at Nation Ave
+6130,C,Lawson St at Bacon St (EB)
+5424,C,S Roxboro St at Bond St
+5993,C,Duke St at Trinity Ave
+5846,C,Chapel Hill Rd at Vineyard St
+6289,C,E Geer St at Midland Terrace (EB)
+6049,C,Service Rd at Hillandale Rd (WB)
+6351,C,Ross Rd at Idlewood Rd
+5910,C,Angier Ave at Ellis Rd
+5441,C,NC 54 at Waterford Valley Dr (WB)
+6334,C,Chapel Dr at Duke University Rd (Alumni
+6485,C,Hardee St at Mimosa St (SB)
+5259,C,N Alston Ave at Geer St (NB)
+5904,C,Chapel Hill Rd at Anderson St
+6097,C,NC 55 at Corona St
+4209720,C,CHALK LEVEL RD AT CONVERGENC
+6397,C,Alston Ave at Riddle Rd (NB)
+5595,C,Duke St at Markham Ave
+5930,C,Broad St at Sprunt Ave (SB)
+6206,C,Guess Rd at Crystal Lake Rd
+6621,C,Garrett Rd at Glenbrook West Apartments
+5522,C,Dearborn Dr at Cannada Ave (Disciples C
+5706,C,Roxboro St at Masondale Ave
+6677,C,Angier Ave at East End Ave (EB)
+6128,C,Stadium Dr at Wyldewood Rd (Foxfire Apt
+6678,C,Angier Ave at Midway Ave (EB)
+6159,C,Dowd St at Gurley St (EB)
+6630,C,TW Alexander Dr at ACC Blvd (WakeMed Em
+5153,C,Garrett Rd at Old Chapel Hill Rd
+6245,C,Geer St at Glendale Ave
+6281,C,TW Alexander Dr at Stirrup Creek Dr
+5781,C,W Enterprise St at Fargo St
+5136,C,Fayetteville Rd at Pearson Dr
+5094,C,Lakewood Ave at Blackwell St
+6244,C,W Geer St at Glendale Ave
+5201,C,Angier Ave at Wrenn Rd (SB)
+5231,C,University Dr at Beech Lake Apts
+5482,C,Roxboro Rd at Lynch St
+5351,C,LaSalle St at Bradford Ridge Apts
+6470,C,Lawson St at BRITE Science Complex
+6171,C,Lawson St at NCCU Track (EB)
+5858,C,Chapel Hill Rd at Wa Wa Ave
+5306,C,Morehead Ave at Arnette Ave (WB)
+5057,C,Angier Ave at Driver St (EB)
+5934,C,Duke St at Jackson St
+5836,C,Dearborn Dr at Maplewood Dr (south)
+789987,C,HILLANDALE RD AT CARVER ST
+5516,C,Duke St at Carver St
+5197,C,Morehead Ave at Arnette Ave (EB)
+5221,C,E Weaver St at Jesmond St
+6020,C,Otis St at Pilot St
+5466,C,ROXBORO RD AT ARGONNE DR
+5204,C,S Alston Ave at Dupree St (SB)
+5664,C,Dearborn Dr at Thelma St (NB)
+789984,C,HILLANDALE RD AT CLUB BLVD
+6574,C,Liberty St at Elizabeth St (WB)
+5720,C,Junction Rd at NC 98
+6395,C,Briggs Ave at Person St (SB 1)
+5257,C,Shirley St at Ratcale Ln
+1221,C,Slater Rd at Page Rd (Imperial Point)
+5365,C,Raynor St at Hardee St (EB)
+6007,C,Service Rd at Hillandale Rd (EB)
+1804,C,Renaissance Pkwy at Leonardo Dr (WB)
+5027,C,Club Blvd at Gregson St
+1865,C,NC 54 at Triangle Dr (WB)
+6165,C,Old Chapel Hill Rd at Garrett Rd (WB)
+5203,C,Avondale Dr at E Markham Ave (NB)
+5567,C,Fayetteville Rd at Juliette Dr (SB)
+6004,C,NC 55 at Crete St
+6688,C,Little Brier Creek Ln at TW Alexander D
+5239,C,Cornwallis Rd at Spring Ridge Apt
+5389,C,Constitution Dr at McKinley St
+5464,C,Morehead Ave at Vickers Ave (EB)
+1557,C,NC 54 at New Millennium Way (WB)
+5906,C,Garrett Rd at Eno River Church
+6611,C,Ben Franklin Blvd at Medical Park Dr (W
+6472,C,Herndon Rd at Fayetteville Rd
+5970,C,Fayetteville Rd at Cook Rd (SB)
+5271,C,Dearborn Dr at Deer Run (NB)
+5047,C,Roxboro Rd at Markham Ave (south)
+5229,C,Roxboro Rd at Hugo St
+5240,C,Freeman Rd at Valmet Dr
+5574,C,Durham-Chapel Hill Blvd at Hope Valley
+789988,C,HILLANDALE RD AT CROASDAILE
+6320,C,Martin Luther King Jr Pkwy at Stratford
+5430,C,Riddle Rd at Kirby St (SB)
+5035,C,Angier Ave at Pleasant Dr
+5272,C,Duke University Rd at Anderson St (EB)
+6644,C,Garrett Rd at Yates Baptist Association
+6545,C,Morreene Rd at Campus Walk Ave (NB)
+5356,C,Holloway St at Miami Blvd (WB)
+6546,C,American Dr at Hillgrand Dr (WB)
+5946,C,Cornwallis Rd at Chapel Hill Rd (Rogers
+5439,C,Gregson St at Lamond Ave
+5307,C,Shannon Rd at University Dr (Wells Farg
+5472,C,Old Oxford Rd at Dearborn Dr (EB)
+6201,C,Hillandale Rd at Hillandale Elementary
+6331,C,Erwin Rd at Trent Dr (WB)
+5988,C,Roxboro St at Gray St
+5618,C,Holloway St at Joyland Ave (EB)
+1074,C,University Dr at American Red Cross
+1777,C,Slater Rd at Sheraton Hotel
+5695,C,Hillandale Rd at Fawn Ave (Croasdaile O
+6676,C,Guess Rd at Victory Blvd
+6205,C,Guess Rd at Peppertree St
+6619,C,Cornwallis Rd at Chapel Hill Rd (WB)
+5055,C,Gregson St at Englewood Ave
+5333,C,Angier Ave at Jones Cir (NB)
+5540,C,Chapel Hill Rd at Pickett Rd (SB)
+5116,C,Roxboro St at Duke St (Autozone)
+5492,C,Dearborn Dr at Cannada Ave (NB)
+6520,C,Miami Blvd at Ellis Rd (SB)
+6156,C,Carver St at Meriwether Dr
+6286,C,Chapel Dr at Duke University Rd (Duke N
+6155,C,Roxboro Rd at Crutchfield St Duke Regional
+6173,C,Holloway St at Southerland St (EB)
+5509,C,Old Farm Rd at Seven Oaks Rd
+5674,C,University Dr at Springfield Apts
+5423,C,Enterprise St at Roxboro St (EB)
+5868,C,Club Blvd at Cascadilla St
+5346,C,Raynor St at Fidelity Dr (EB)
+6478,C,NC 98 at Little Wonders
+6175,C,E Main St at Roberson St (EB)
+5235,C,University Dr at University Pl (WB)
+5601,C,Cornwallis Rd at Industry Ln
+789992,C,HILLANDALE RD AT CLUB BLVD
+6394,C,Capps St at Athens St (EB)
+5776,C,NC 54 at Paradigm Park
+6488,C,Raynor St at Hardee St (WB)
+5242,C,Riddle Rd at Kirby St (NB)
+5984,C,NC 55 at Dakota St (NB)
+6276,C,S Alston Ave at Duke Health (SB)
+5350,C,Gary St at Liberty St (NB)
+789995,C,BEN FRANKLIN BLVD AT PACIFIC
+5612,C,Chapel Hill St at Gregson St (EB)
+5581,C,E Club Blvd at Lindbergh St
+5276,C,Broad St at Forest Rd (NB)
+5347,C,E Club Blvd at Dominion St
+5939,C,Otis St at Nelson St
+6133,C,Briggs Ave at Riddle Rd (SB)
+5727,C,Broad St at Sprunt Ave (NB)
+1556,C,NC 54 at New Millennium Way (EB)
+5434,C,Milton Rd at Long Cresent Dr
+5615,C,Gary St at Liberty St (SB)
+5775,C,Duke University Rd at Swift Ave (EB)
+5018,C,Morehead Ave at Vickers Ave (WB)
+5496,C,Dearborn Dr at Maplewood Dr (north)
+5920,C,Hardee St at Mimosa St (NB)
+5471,C,Erwin Rd at Lenox Baker Childrens Hosp
+5658,C,Durham Chapel Hill Blvd at James St
+5982,C,Duke University Rd at Swift Ave (WB)
+6313,C,Angier Ave at Bungalow Ave
+5779,C,Capps St at Athens St (WB)
+789990,C,HILLANDALE RD AT PINETREE CT
+5322,C,Meriwether Dr at E Carver St (NB)
+6340,C,NC 55 at Carpenter Fletcher Rd (SB)
+6600,C,Roxboro Rd at Dillard St
+5048,C,Chapel Hill Rd at Pinecrest Rd
+5675,C,Otis St at Alton St
+6463,C,Milton Rd at Durham County Library
+5220,C,Duke St at Demerius St
+5662,C,Roxboro Rd at Lavender Ave
+5005,C,Cornwallis Rd at Industry Ln
+5320,C,Gregson St at W Knox St
+6606,C,Guess Rd at Horton Rd (Cross Creek Shop
+6254,C,Highgate Dr at Harrier Ct
+5547,C,Sima Ave at Bacon St
+6680,C,Great Jones St at Main St (Museum of Du
+5702,C,Roxboro Rd at Knox St (NB)
+5081,C,Trent Dr at Duke Circle Parking Deck
+5317,C,Duke University Rd at Anderson St (WB)
+6178,C,E Main St at Cherry Grove St (WB)
+6287,C,S Alston Ave at Englert Dr (SB)
+5324,C,Roxboro St at Dunstan Ave
+5470,C,Raynor St at Fidelity Dr (WB)
+5450,C,Meriwether Dr at Oxford Ct
+5241,C,Lawson St at DTCC F Lot (EB)
+6026,C,Cornwallis Rd at Beechwood Ave
+5843,C,Concord St at Otis St
+6693,C,W Enterprise St at E Forest Hills Blvd
+5038,C,Liberty St at Queen St
+1864,C,NC 54 at Research Triangle High School
+6212,C,Hillandale Rd at Croasdaile Farms
+6533,C,Mangum St at Ramseur St
+5602,C,E Main St at Goley St (WB)
+6261,C,Miami Blvd at Stirrup Creek Dr (PBM Gra
+6098,C,Riddle Rd at Ancroft Ave (SB)
+5339,C,Angier Ave at Jones Cir (SB)
+5892,C,Sima Ave at Building 18
+5929,C,Briggs Ave at Community Gardens
+5372,C,NC 54 at Boulder Rd (WB)
+5512,C,Alston Ave at Cecil St (NCCU)
+6058,C,Lawson St at S Briggs Ave (Ferguson)
+1732,C,Stirrup Creek at Twin Creek Ct
+6132,C,Briggs Ave at Person St (SB 2)
+6643,C,Garrett Rd at Carillon Assisted Living
+789991,C,CHALK LEVEL RD AT SHAFTSBURY
+5089,C,Duke St at Englewood Ave
+5942,C,Roxboro St at Mallard Ave
+5922,C,E Main St at Blacknall St (EB)
+1776,C,Slater Rd at GoTriangle Admin Office
+1222,C,Slater Rd at Emperor Blvd (Chelsea Place)
+5622,C,GLENBROOK DR AT CLUB BLVD
+1863,C,NC 54 at Park Office Dr (The Frontier)
+5657,C,Chapel Hill St at Kent St (WB)
+5678,C,Morehead Ave at Cornell St (EB)
+6601,C,New Castle Rd at Stadium Dr (WB)
+5290,C,Bacon St at Durham Public Schools Wareh
+5400,C,Roxboro Rd at Channing Ave (NB)
+5735,C,Holloway St at S Woodcrest St
+6064,C,Roxboro Rd at Omega Rd
+6069,C,Chapel Hill St at Carroll St
+1861,C,NC 54 at Park Dr (First Citizens Bank)
+5006,C,Alston Ave at Durham Freeway (NB)
+5832,C,Dearborn Dr at Apollo St (SB)
+6615,C,Milton Rd at Post Office
+1563,C,Slater Rd at Emperor Blvd (Bright Horiz
+1860,C,NC 54 at Park Dr (EB)
+5032,C,Roxboro Rd at Hammond St
+5101,C,E Club Blvd at Thorne St
+5248,C,Guess Rd at Duke Homestead Rd (SB)
+5264,C,Bacon St at Lawson St
+5277,C,Dearborn Dr at Apollo St (NB)
+5371,C,NC 54 at Boulder Rd (EB)
+5528,C,Martin Luther King Jr Pkwy at Fayettevi
+5704,C,Guess Rd at Duke Homestead Rd (NB)
+5849,C,Dearborn Dr at Thelma St (SB)
+6193,C,Fayetteville St MLK Jr. Pkwy (SB)
+6441,C,Duke University Rd at Chapel Dr (EB)
+6498,C,Milton Rd at Long Cresent Dr
+6532,C,TW Alexander Dr at Roche Dr (Implus)
