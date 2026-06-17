@@ -316,7 +316,7 @@ def make_image_part(path: Path):
 
 def fetch_local_views(stop_id: str, directory: Path) -> dict:
     views = {}
-    for path in directory.glob(f"{stop_id}_*.jpg"):
+    for path in directory.glob(f"{stop_id}_*.png"):
         match = re.search(r"_([a-z_]+)_heading", path.name.lower())
         if match:
             views[match.group(1)] = path
@@ -325,7 +325,7 @@ def fetch_local_views(stop_id: str, directory: Path) -> dict:
 def group_images_by_stop(directory: Path) -> dict:
     """Groups all image files in a directory by their stop_id."""
     groups = defaultdict(dict)
-    for path in directory.glob("*.jpg"):
+    for path in directory.glob("*.png"):
         parts = path.name.split("_")
         if parts and parts[0].isdigit():
             stop_id = parts[0]
