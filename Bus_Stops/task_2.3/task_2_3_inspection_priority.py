@@ -6,10 +6,10 @@ import pandas as pd
 # CONFIG
 # ============================================================
 
-BASE_CSV = Path("output/step_2_2_cleaning_priority_score.csv")
+BASE_CSV = Path("step_2_2_cleaning_priority_score.csv")
 IMAGE_RESULTS_CSV = Path("bus_stop_results.csv")
 
-OUTPUT_CSV = Path("output/step_2_3_inspection_priority_score.csv")
+OUTPUT_CSV = Path("step_2_3_inspection_priority_score.csv")
 
 
 # ============================================================
@@ -36,27 +36,7 @@ def find_column(df, possible_names):
     return None
 
 
-def yes_no_score(value, yes_score=10, no_score=0, unclear_score=5):
-    value = normalize_text(value)
-
-    if value == "YES":
-        return yes_score
-    elif value == "NO":
-        return no_score
-    elif value == "UNCLEAR":
-        return unclear_score
-    elif value in {"NA", "N/A", ""}:
-        return 0
-    else:
-        return unclear_score
-
-
 def inverse_yes_no_score(value, yes_score=0, no_score=10, unclear_score=5):
-    """
-    For fields where NO is worse than YES.
-    Example: sidewalk_connection = No should increase inspection priority.
-    """
-
     value = normalize_text(value)
 
     if value == "YES":
@@ -71,10 +51,61 @@ def inverse_yes_no_score(value, yes_score=0, no_score=10, unclear_score=5):
         return unclear_score
 
 
-def numeric_count_score(value, points_per_item=3, max_score=15):
-    try:
-        count = int(float(value))
-    except:
+def visibility_score(value):
+    value = normalize_text(value)
+
+    if value == "YES":
+        return 0
+    elif value == "NO":
+        return 25
+    elif value == "UNCLEAR":
+        return 15
+    else:
+        return 15
+
+
+def confidence_penalty(value):
+    """
+    Supports confidence as:
+    - 0 to 1
+    - 0 to 100
+    - blank
+    """
+
+    confidence = pd.to_numeric(value, errors="coerce")
+
+    if pd.isna(confidence):
+        return 15
+
+    if confidence <= 1:
+        return max(0, 15 - confidence * 15)
+
+    return max(0, 15 - (confidence / 100) * 15)
+
+
+def landing_type_score(value):
+    value = normalize_text(value)
+
+    bad_values = {
+        "UNPAVED",
+        "DIRT",
+        "GRASS",
+        "GRAVEL",
+        "UNCLEAR",
+        "NONE",
+        "NO"
+    }
+
+    if value in bad_values:
+        return 15
+
+    return 0
+
+
+def count_score(value, points_per_item=3, max_score=15):
+    count = pd.to_numeric(value, errors="coerce")
+
+    if pd.isna(count):
         return 0
 
     return min(count * points_per_item, max_score)
@@ -103,10 +134,16 @@ def main():
     image_stop_col = find_column(image_df, ["stop_id", "Stop Code", "stop_code"])
 
     if base_stop_col is None:
-        raise ValueError(f"Could not find stop code column in base file: {list(base_df.columns)}")
+        raise ValueError(
+            "Could not find stop code column in base file.\n"
+            f"Available columns: {list(base_df.columns)}"
+        )
 
     if image_stop_col is None:
-        raise ValueError(f"Could not find stop id column in image file: {list(image_df.columns)}")
+        raise ValueError(
+            "Could not find stop id column in image results file.\n"
+            f"Available columns: {list(image_df.columns)}"
+        )
 
     base_df[base_stop_col] = base_df[base_stop_col].astype(str).str.strip()
     image_df[image_stop_col] = image_df[image_stop_col].astype(str).str.strip()
@@ -119,7 +156,6 @@ def main():
         suffixes=("", "_image")
     )
 
-    # Try to find useful Gemini/image-analysis columns
     visible_col = find_column(df, ["bus_stop_visible"])
     confidence_col = find_column(df, ["confidence"])
     landing_type_col = find_column(df, ["landing_type"])
@@ -130,26 +166,19 @@ def main():
     trash_col = find_column(df, ["trash_count", "trash"])
     lighting_col = find_column(df, ["street_lighting"])
 
-    df["inspection_priority_score"] = 0
+    df["inspection_priority_score"] = 0.0
 
-    # Start with some cleaning priority weight
+    # Cleaning priority weight
     if "cleaning_priority_score" in df.columns:
         df["inspection_priority_score"] += df["cleaning_priority_score"] * 0.35
 
-    # If stop is not clearly visible, inspect it
+    # Image analysis / field condition scores
     if visible_col:
-        df["inspection_priority_score"] += df[visible_col].apply(
-            lambda x: yes_no_score(x, yes_score=0, no_score=25, unclear_score=15)
-        )
+        df["inspection_priority_score"] += df[visible_col].apply(visibility_score)
 
-    # Low confidence means inspect
     if confidence_col:
-        df["confidence_numeric"] = pd.to_numeric(df[confidence_col], errors="coerce")
-        df["inspection_priority_score"] += df["confidence_numeric"].apply(
-            lambda x: 15 if pd.isna(x) else max(0, 15 - (x * 15 if x <= 1 else x / 100 * 15))
-        )
+        df["inspection_priority_score"] += df[confidence_col].apply(confidence_penalty)
 
-    # Missing or weak pedestrian infrastructure increases inspection priority
     if sidewalk_col:
         df["inspection_priority_score"] += df[sidewalk_col].apply(
             lambda x: inverse_yes_no_score(x, yes_score=0, no_score=20, unclear_score=10)
@@ -160,29 +189,25 @@ def main():
             lambda x: inverse_yes_no_score(x, yes_score=0, no_score=15, unclear_score=8)
         )
 
-    # Unpaved / unclear landing type increases inspection priority
     if landing_type_col:
-        df["inspection_priority_score"] += df[landing_type_col].apply(
-            lambda x: 15 if normalize_text(x) in {"UNPAVED", "DIRT", "GRASS", "GRAVEL", "UNCLEAR"} else 0
-        )
+        df["inspection_priority_score"] += df[landing_type_col].apply(landing_type_score)
 
-    # Amenities add inspection value because there is more to check/maintain
+    # Amenities add inspection need
     if shelter_col:
         df["inspection_priority_score"] += df[shelter_col].apply(
-            lambda x: numeric_count_score(x, points_per_item=5, max_score=15)
+            lambda x: count_score(x, points_per_item=5, max_score=15)
         )
 
     if bench_col:
         df["inspection_priority_score"] += df[bench_col].apply(
-            lambda x: numeric_count_score(x, points_per_item=3, max_score=9)
+            lambda x: count_score(x, points_per_item=3, max_score=9)
         )
 
     if trash_col:
         df["inspection_priority_score"] += df[trash_col].apply(
-            lambda x: numeric_count_score(x, points_per_item=3, max_score=9)
+            lambda x: count_score(x, points_per_item=3, max_score=9)
         )
 
-    # No lighting increases inspection priority
     if lighting_col:
         df["inspection_priority_score"] += df[lighting_col].apply(
             lambda x: inverse_yes_no_score(x, yes_score=0, no_score=8, unclear_score=4)
@@ -196,7 +221,6 @@ def main():
         ascending=[False, True]
     )
 
-    OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_CSV, index=False)
 
     print("Done.")

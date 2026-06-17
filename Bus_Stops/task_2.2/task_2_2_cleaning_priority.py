@@ -6,8 +6,8 @@ import pandas as pd
 # CONFIG
 # ============================================================
 
-INPUT_CSV = Path("output/Altered 2026 GoDurham Bus Stop List_updated_filtered_with_abc.csv")
-OUTPUT_CSV = Path("output/step_2_2_cleaning_priority_score.csv")
+INPUT_CSV = Path("inventory_with_abc_categories.csv")
+OUTPUT_CSV = Path("step_2_2_cleaning_priority_score.csv")
 
 
 # ============================================================
@@ -21,10 +21,6 @@ def normalize_text(value):
 
 
 def find_column(df, possible_names):
-    """
-    Finds a column even if the name is slightly different.
-    """
-
     normalized_columns = {
         col.lower().strip().replace(" ", "_"): col
         for col in df.columns
@@ -39,12 +35,6 @@ def find_column(df, possible_names):
 
 
 def abc_to_score(category):
-    """
-    A = highest cleaning priority
-    B = medium
-    C = lower
-    """
-
     category = normalize_text(category)
 
     if category == "A":
@@ -57,7 +47,7 @@ def abc_to_score(category):
         return 0
 
 
-def score_to_priority(score):
+def score_to_priority_level(score):
     if score >= 90:
         return "Very High"
     elif score >= 70:
@@ -77,27 +67,37 @@ def main():
 
     category_col = find_column(df, [
         "ABC",
+        "A/B/C",
         "Category",
+        "ABC Category",
         "Cleaning Category",
         "Maintenance Category",
-        "ABC Category",
-        "cleaning_category"
+        "cleaning_category",
+        "abc_category"
     ])
 
     if category_col is None:
         raise ValueError(
-            f"Could not find ABC/category column. Available columns: {list(df.columns)}"
+            "Could not find ABC/category column.\n"
+            f"Available columns: {list(df.columns)}"
         )
 
+    stop_col = find_column(df, ["Stop Code", "stop_code", "stop_id"])
+
     df["cleaning_priority_score"] = df[category_col].apply(abc_to_score)
-    df["cleaning_priority_level"] = df["cleaning_priority_score"].apply(score_to_priority)
+    df["cleaning_priority_level"] = df["cleaning_priority_score"].apply(score_to_priority_level)
 
-    df = df.sort_values(
-        by=["cleaning_priority_score", "Stop Code"],
-        ascending=[False, True]
-    )
+    if stop_col:
+        df = df.sort_values(
+            by=["cleaning_priority_score", stop_col],
+            ascending=[False, True]
+        )
+    else:
+        df = df.sort_values(
+            by=["cleaning_priority_score"],
+            ascending=False
+        )
 
-    OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_CSV, index=False)
 
     print("Done.")
