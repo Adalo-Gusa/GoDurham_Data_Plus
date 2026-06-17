@@ -1,0 +1,19 @@
+A/B/C merge report
+====================
+Inventory file: csv_changer_folder/Altered 2026 GoDurham Bus Stop List_updated_filtered.csv
+Tracker workbook: May 26-30  Schedule ABC Bus stops' Maintenance Tracker Final 2025 (1).xlsx
+Inventory stop ID column used: Stop Code
+
+Inventory rows: 831
+A/B/C rows extracted from Lookup sheet: 903
+Matched inventory rows: 773
+Inventory rows missing A/B/C category: 58
+A/B/C tracker rows not found in inventory: 130
+
+A/B/C counts from tracker:
+  A: 147
+  B: 202
+  C: 554
+
+Next step:
+  python task_2_2_cleaning_priority.py inventory_with_abc_categories.csv
