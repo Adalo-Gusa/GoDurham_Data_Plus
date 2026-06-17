@@ -7,7 +7,7 @@ import pandas as pd
 # ============================================================
 
 BASE_CSV = Path("step_2_2_cleaning_priority_score.csv")
-IMAGE_RESULTS_CSV = Path("bus_stop_results.csv")
+IMAGE_RESULTS_CSV = Path("Gemini_Recognition/bus_stop_results.csv")
 
 OUTPUT_CSV = Path("step_2_3_inspection_priority_score.csv")
 

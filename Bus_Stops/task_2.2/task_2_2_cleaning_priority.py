@@ -21,6 +21,10 @@ def normalize_text(value):
 
 
 def find_column(df, possible_names):
+    """
+    Finds a column even if spacing/capitalization differs.
+    """
+
     normalized_columns = {
         col.lower().strip().replace(" ", "_"): col
         for col in df.columns
@@ -28,6 +32,7 @@ def find_column(df, possible_names):
 
     for name in possible_names:
         key = name.lower().strip().replace(" ", "_")
+
         if key in normalized_columns:
             return normalized_columns[key]
 
@@ -35,6 +40,13 @@ def find_column(df, possible_names):
 
 
 def abc_to_score(category):
+    """
+    Converts A/B/C cleaning category into numeric score.
+    A = highest priority
+    B = medium priority
+    C = lower priority
+    """
+
     category = normalize_text(category)
 
     if category == "A":
@@ -66,6 +78,7 @@ def main():
     df = pd.read_csv(INPUT_CSV)
 
     category_col = find_column(df, [
+        "Current Cleaning Category",
         "ABC",
         "A/B/C",
         "Category",
@@ -82,7 +95,11 @@ def main():
             f"Available columns: {list(df.columns)}"
         )
 
-    stop_col = find_column(df, ["Stop Code", "stop_code", "stop_id"])
+    stop_col = find_column(df, [
+        "Stop Code",
+        "stop_code",
+        "stop_id"
+    ])
 
     df["cleaning_priority_score"] = df[category_col].apply(abc_to_score)
     df["cleaning_priority_level"] = df["cleaning_priority_score"].apply(score_to_priority_level)
