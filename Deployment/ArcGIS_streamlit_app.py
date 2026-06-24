@@ -155,7 +155,7 @@ def push_to_arcgis_server(stop_id, gemini_results, uploaded_file):
             target_feature = query_result.features[0]
             object_id = target_feature.attributes['OBJECTID'] # Required for attachments
             
-            # 1. HARDCODE THE VALUES EXPLICITLY (No loops, no PropertyMap errors)
+            # 1. Update the attributes safely inside the feature object
             target_feature.attributes['bus_stop_visible'] = str(gemini_results.get('bus_stop_visible', 'Yes'))
             target_feature.attributes['shelter_number'] = int(gemini_results.get('shelter_number', 0))
             target_feature.attributes['bench_number'] = int(gemini_results.get('bench_number', 0))
@@ -166,10 +166,13 @@ def push_to_arcgis_server(stop_id, gemini_results, uploaded_file):
             target_feature.attributes['landing_pad'] = str(gemini_results.get('landing_pad', 'Two_doors'))
             target_feature.attributes['notes'] = str(gemini_results.get('notes', ''))
             
-            # 2. Fire the asynchronous REST update to commit text attributes live
-            layer.edit_features(updates=[target_feature])
+            # 2. CONVERT TO DICTIONARY: This bypasses the PropertyMap serialization bug completely!
+            feature_dict = target_feature.to_dict()
             
-            # 3. Handle the image file attachment stream safely
+            # 3. Fire the asynchronous REST update using the clean dictionary payload
+            layer.edit_features(updates=[feature_dict])
+            
+            # 4. Handle the image file attachment stream safely
             if uploaded_file is not None:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
                     tmp_file.write(uploaded_file.getbuffer())
@@ -177,14 +180,14 @@ def push_to_arcgis_server(stop_id, gemini_results, uploaded_file):
                 
                 # Upload the image file as an attachment to the matching layer row
                 layer.attachments.add(oid=object_id, file_path=tmp_file_path)
-                os.unlink(tmp_file_path) # Clean up temporary space
+                os.unlink(tmp_file_path) # Clean up temporary container storage
                 
             return True, f"Perfect Sync! Stop {stop_id} attributes and field image uploaded directly to ArcGIS Live Map Server."
         else:
             return False, f"Stop ID {stop_id} parsed successfully, but does not match any entry in GoDurham's map database layer."
     except Exception as e:
         return False, f"ArcGIS Live Data Stream Exception: {e}"
-
+    
 # ==========================================
 # STREAMLIT UI LAYOUT
 # ==========================================
