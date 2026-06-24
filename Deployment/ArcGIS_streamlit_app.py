@@ -166,11 +166,14 @@ def push_to_arcgis_server(stop_id, gemini_results, uploaded_file):
             target_feature.attributes['landing_pad'] = str(gemini_results.get('landing_pad', 'Two_doors'))
             target_feature.attributes['notes'] = str(gemini_results.get('notes', ''))
             
-            # 2. CONVERT TO DICTIONARY: This bypasses the PropertyMap serialization bug completely!
-            feature_dict = target_feature.to_dict()
-            
-            # 3. Fire the asynchronous REST update using the clean dictionary payload
-            layer.edit_features(updates=[feature_dict])
+            result = layer.edit_features(
+            updates=[target_feature],          # Feature object, NOT a dict
+            rollback_on_failure=True           # Forces synchronous, simpler serialization path
+            )
+
+            update_results = result.get("updateResults", [])
+            if not update_results or not update_results[0].get("success"):
+                raise RuntimeError(f"Update failed: {update_results}")
             
             # 4. Handle the image file attachment stream safely
             if uploaded_file is not None:
