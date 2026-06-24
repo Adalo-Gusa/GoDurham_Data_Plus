@@ -161,7 +161,7 @@ def get_arcgis_token(client_id: str, client_secret: str) -> str:
     return resp.json()["access_token"]
 
 
-def push_to_arcgis_rest(layer_url: str, token: str, stop_id: str, gemini_results: dict):
+def push_to_arcgis_server(layer_url: str, token: str, stop_id: str, gemini_results: dict):
     """Directly query + update via REST — no arcgis SDK objects involved."""
 
     # 1. Query for the OBJECTID
