@@ -144,50 +144,64 @@ response_schema = {
 # ==========================================
 # BACKEND ARCGIS SYNC & ATTACHMENT PIPELINE
 # ==========================================
+import json
+
 def push_to_arcgis_server(stop_id, gemini_results, uploaded_file):
     if not layer:
         return False, "ArcGIS Database feature layer connection not active."
     try:
-        # Search the live map database server for the row matching this stop_id
         query_result = layer.query(where=f"stop_id = '{stop_id}'")
         
-        if len(query_result.features) > 0:
-            target_feature = query_result.features[0]
-            object_id = target_feature.attributes['OBJECTID'] # Required for attachments
-            
-            # 1. Update the attributes safely inside the feature object
-            target_feature.attributes['bus_stop_visible'] = str(gemini_results.get('bus_stop_visible', 'Yes'))
-            target_feature.attributes['shelter_number'] = int(gemini_results.get('shelter_number', 0))
-            target_feature.attributes['bench_number'] = int(gemini_results.get('bench_number', 0))
-            target_feature.attributes['trash_can_number'] = int(gemini_results.get('trash_can_number', 0))
-            target_feature.attributes['stop_surface'] = str(gemini_results.get('stop_surface', 'Concrete'))
-            target_feature.attributes['landing_type'] = str(gemini_results.get('landing_type', 'Paved'))
-            target_feature.attributes['sidewalk_connection'] = str(gemini_results.get('sidewalk_connection', 'Yes'))
-            target_feature.attributes['landing_pad'] = str(gemini_results.get('landing_pad', 'Two_doors'))
-            target_feature.attributes['notes'] = str(gemini_results.get('notes', ''))
-            
-            result = layer.edit_features(
-            updates=[target_feature],          # Feature object, NOT a dict
-            rollback_on_failure=True           # Forces synchronous, simpler serialization path
-            )
+        if not query_result.features:
+            return False, f"Stop ID {stop_id} missing on target map service layer."
 
-            update_results = result.get("updateResults", [])
-            if not update_results or not update_results[0].get("success"):
-                raise RuntimeError(f"Update failed: {update_results}")
-            
-            # 4. Handle the image file attachment stream safely
-            if uploaded_file is not None:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
-                    tmp_file.write(uploaded_file.getbuffer())
-                    tmp_file_path = tmp_file.name
-                
-                # Upload the image file as an attachment to the matching layer row
-                layer.attachments.add(oid=object_id, file_path=tmp_file_path)
-                os.unlink(tmp_file_path) # Clean up temporary container storage
-                
-            return True, f"Perfect Sync! Stop {stop_id} attributes and field image uploaded directly to ArcGIS Live Map Server."
-        else:
-            return False, f"Stop ID {stop_id} parsed successfully, but does not match any entry in GoDurham's map database layer."
+        target_feature = query_result.features[0]
+        object_id = target_feature.attributes["OBJECTID"]
+
+        # Build a plain REST-style feature dict — no Feature/PropertyMap objects
+        update_payload = {
+            "attributes": {
+                "OBJECTID": int(object_id),
+                "bus_stop_visible":   str(gemini_results.get("bus_stop_visible", "Yes")),
+                "shelter_number":     int(gemini_results.get("shelter_number", 0)),
+                "bench_number":       int(gemini_results.get("bench_number", 0)),
+                "trash_can_number":   int(gemini_results.get("trash_can_number", 0)),
+                "stop_surface":       str(gemini_results.get("stop_surface", "Concrete")),
+                "landing_type":       str(gemini_results.get("landing_type", "Paved")),
+                "sidewalk_connection":str(gemini_results.get("sidewalk_connection", "Yes")),
+                "landing_pad":        str(gemini_results.get("landing_pad", "Two_doors")),
+                "notes":              str(gemini_results.get("notes", "")),
+            }
+        }
+
+        # Hit the REST endpoint directly using the SDK's authenticated connection
+        rest_url = f"{layer.url}/applyEdits"
+        response = layer._con.post(
+            rest_url,
+            postdata={
+                "f": "json",
+                "updates": json.dumps([update_payload]),
+            }
+        )
+
+        # applyEdits returns {"updateResults": [{"objectId": N, "success": true}]}
+        results = response.get("updateResults", [])
+        if not results or not results[0].get("success"):
+            err = results[0].get("error", {}) if results else {}
+            return False, f"REST update failed: {err}"
+
+        # Attachment handling (unchanged)
+        if uploaded_file is not None:
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=Path(uploaded_file.name).suffix
+            ) as tmp_file:
+                tmp_file.write(uploaded_file.getbuffer())
+                tmp_file_path = tmp_file.name
+            layer.attachments.add(oid=object_id, file_path=tmp_file_path)
+            os.unlink(tmp_file_path)
+
+        return True, f"Perfect Sync! Stop {stop_id} elements updated."
+
     except Exception as e:
         return False, f"ArcGIS Live Data Stream Exception: {e}"
     
