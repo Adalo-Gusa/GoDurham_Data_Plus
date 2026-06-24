@@ -8,6 +8,8 @@ from google.genai import types
 from arcgis.gis import GIS
 from arcgis.features import FeatureLayer
 import tempfile
+import time
+import requests
 
 # ==========================================
 # CONFIGURATION & API KEY INITIALIZATION
@@ -15,7 +17,6 @@ import tempfile
 MODEL_ID = "gemini-3.5-flash"
 GEMINI_PROJECT = "dataplus-godurham"
 
-# Initialize the Gemini Client securely via Streamlit Secrets
 try:
     if "GOOGLE_APPLICATION_CREDENTIALS_JSON" in st.secrets:
         tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w")
@@ -31,14 +32,15 @@ try:
 except Exception as e:
     st.error(f"Failed to initialize Gemini Client: {e}")
 
-# Securely initialize connection to your live ArcGIS Online feature layer
+# ArcGIS SDK layer (still used for attachments)
 @st.cache_resource
 def get_arcgis_layer():
     try:
-        # OAuth2 Application client authentication bypassing Duo 2-Factor challenges
-        gis = GIS("https://dukeuniv.maps.arcgis.com", 
-                  client_id=st.secrets["ARCGIS_CLIENT_ID"], 
-                  client_secret=st.secrets["ARCGIS_CLIENT_SECRET"])
+        gis = GIS(
+            "https://dukeuniv.maps.arcgis.com",
+            client_id=st.secrets["ARCGIS_CLIENT_ID"],
+            client_secret=st.secrets["ARCGIS_CLIENT_SECRET"]
+        )
         return FeatureLayer(st.secrets["FEATURE_LAYER_URL"], gis=gis)
     except Exception as e:
         st.error(f"Failed to securely authenticate with Duke ArcGIS: {e}")
@@ -133,86 +135,131 @@ response_schema = {
         "notes": {"type": "string"},
     },
     "required": [
-        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "best_view", "bus_stop_visible", "bus_stop_visibility_confidence", 
-        "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", 
-        "shelter_number", "shelter_present", "bench_number", "bench_present",  
+        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "best_view",
+        "bus_stop_visible", "bus_stop_visibility_confidence",
+        "stop_surface", "landing_type", "sidewalk_connection", "landing_pad",
+        "shelter_number", "shelter_present", "bench_number", "bench_present",
         "trash_can_number", "trash_can_present", "date", "street_lighting", "notes"
     ],
     "additionalProperties": False
 }
 
 # ==========================================
-# BACKEND ARCGIS SYNC & ATTACHMENT PIPELINE
+# ARCGIS TOKEN MANAGEMENT
 # ==========================================
-import requests
-import json
+_token_cache = {"value": None, "expires_at": 0}
 
-def get_arcgis_token(client_id: str, client_secret: str) -> str:
-    """Fetch an OAuth2 token directly — call once at startup and cache."""
+def get_arcgis_token() -> str:
+    """Returns a valid token using secrets, auto-refreshing before expiry."""
+    if _token_cache["value"] and time.time() < _token_cache["expires_at"] - 60:
+        return _token_cache["value"]
+
     resp = requests.post(
         "https://www.arcgis.com/sharing/rest/oauth2/token",
         data={
-            "client_id": client_secret,
-            "client_secret": client_secret,
+            "client_id": st.secrets["ARCGIS_CLIENT_ID"],      # fixed: was using client_secret twice
+            "client_secret": st.secrets["ARCGIS_CLIENT_SECRET"],
             "grant_type": "client_credentials",
             "f": "json",
         },
-    )
-    return resp.json()["access_token"]
-
-
-def push_to_arcgis_server(layer_url: str, token: str, stop_id: str, gemini_results: dict):
-    """Directly query + update via REST — no arcgis SDK objects involved."""
-
-    # 1. Query for the OBJECTID
-    query_resp = requests.get(
-        f"{layer_url}/query",
-        params={
-            "where": f"stop_id='{stop_id}'",
-            "outFields": "OBJECTID",
-            "f": "json",
-            "token": token,
-        },
     ).json()
 
-    features = query_resp.get("features", [])
-    if not features:
-        return False, f"Stop ID {stop_id} missing on target map service layer."
+    if "access_token" not in resp:
+        raise RuntimeError(f"Token fetch failed: {resp}")
 
-    object_id = features[0]["attributes"]["OBJECTID"]
+    _token_cache["value"] = resp["access_token"]
+    _token_cache["expires_at"] = time.time() + resp.get("expires_in", 7200)
+    return _token_cache["value"]
 
-    # 2. applyEdits with a plain dict — no SDK at all
-    update_payload = [{
-        "attributes": {
-            "OBJECTID":            int(object_id),
-            "bus_stop_visible":    str(gemini_results.get("bus_stop_visible", "Yes")),
-            "shelter_number":      int(gemini_results.get("shelter_number", 0)),
-            "bench_number":        int(gemini_results.get("bench_number", 0)),
-            "trash_can_number":    int(gemini_results.get("trash_can_number", 0)),
-            "stop_surface":        str(gemini_results.get("stop_surface", "Concrete")),
-            "landing_type":        str(gemini_results.get("landing_type", "Paved")),
-            "sidewalk_connection": str(gemini_results.get("sidewalk_connection", "Yes")),
-            "landing_pad":         str(gemini_results.get("landing_pad", "Two_doors")),
-            "notes":               str(gemini_results.get("notes", "")),
-        }
-    }]
+# ==========================================
+# BACKEND ARCGIS SYNC & ATTACHMENT PIPELINE
+# ==========================================
+def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_file) -> tuple:
+    """
+    Drop-in replacement with original 3-argument signature.
+    Pulls layer_url and token internally — no call-site changes needed.
+    """
+    try:
+        layer_url = st.secrets["FEATURE_LAYER_URL"]
+        token = get_arcgis_token()
 
-    edit_resp = requests.post(
-        f"{layer_url}/applyEdits",
-        data={
-            "updates": json.dumps(update_payload),
-            "f": "json",
-            "token": token,
-        },
-    ).json()
+        # 1. Query for the OBJECTID
+        query_resp = requests.get(
+            f"{layer_url}/query",
+            params={
+                "where": f"stop_id='{stop_id}'",
+                "outFields": "OBJECTID",
+                "f": "json",
+                "token": token,
+            },
+        ).json()
 
-    results = edit_resp.get("updateResults", [])
-    if not results or not results[0].get("success"):
-        err = results[0].get("error", {}) if results else edit_resp
-        return False, f"REST applyEdits failed: {err}"
+        if "error" in query_resp:
+            return False, f"Query failed: {query_resp['error']}"
 
-    return True, f"Perfect Sync! Stop {stop_id} elements updated."
-    
+        features = query_resp.get("features", [])
+        if not features:
+            return False, f"Stop ID {stop_id} missing on target map service layer."
+
+        object_id = features[0]["attributes"]["OBJECTID"]
+
+        # 2. Build update payload — plain dicts, zero SDK objects
+        update_payload = [{
+            "attributes": {
+                "OBJECTID":             int(object_id),
+                "bus_stop_visible":     str(gemini_results.get("bus_stop_visible", "Yes")),
+                "shelter_number":       int(gemini_results.get("shelter_number", 0)),
+                "bench_number":         int(gemini_results.get("bench_number", 0)),
+                "trash_can_number":     int(gemini_results.get("trash_can_number", 0)),
+                "stop_surface":         str(gemini_results.get("stop_surface", "Concrete")),
+                "landing_type":         str(gemini_results.get("landing_type", "Paved")),
+                "sidewalk_connection":  str(gemini_results.get("sidewalk_connection", "Yes")),
+                "landing_pad":          str(gemini_results.get("landing_pad", "Two_doors")),
+                "notes":                str(gemini_results.get("notes", "")),
+            }
+        }]
+
+        # 3. Apply the edit
+        edit_resp = requests.post(
+            f"{layer_url}/applyEdits",
+            data={
+                "updates": json.dumps(update_payload),
+                "f": "json",
+                "token": token,
+            },
+        ).json()
+
+        results = edit_resp.get("updateResults", [])
+        if not results or not results[0].get("success"):
+            err = results[0].get("error", {}) if results else edit_resp
+            return False, f"REST applyEdits failed: {err}"
+
+        # 4. Attachment upload (REST multipart — no SDK layer object needed)
+        if uploaded_file is not None:
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=Path(uploaded_file.name).suffix
+            ) as tmp_file:
+                tmp_file.write(uploaded_file.getbuffer())
+                tmp_file_path = tmp_file.name
+
+            with open(tmp_file_path, "rb") as f_attach:
+                attach_resp = requests.post(
+                    f"{layer_url}/{object_id}/addAttachment",
+                    params={"token": token, "f": "json"},
+                    files={"attachment": (uploaded_file.name, f_attach)},
+                ).json()
+
+            os.unlink(tmp_file_path)
+
+            if not attach_resp.get("addAttachmentResult", {}).get("success"):
+                # Non-fatal: attribute sync succeeded, just warn about attachment
+                return True, f"Stop {stop_id} synced. ⚠️ Attachment upload failed: {attach_resp}"
+
+        return True, f"Perfect Sync! Stop {stop_id} elements updated."
+
+    except Exception as e:
+        return False, f"ArcGIS Live Data Stream Exception: {e}"
+
 # ==========================================
 # STREAMLIT UI LAYOUT
 # ==========================================
@@ -235,7 +282,6 @@ if st.button("Classify & Sync with ArcGIS Server"):
         
         with st.spinner('Running Multimodal Classification & Mapping Pipeline...'):
             try:
-                # Execute automated vision profiling via Gemini 
                 response = client.models.generate_content(
                     model=MODEL_ID,
                     contents=[PROMPT_PASS_1, image],
@@ -247,11 +293,10 @@ if st.button("Classify & Sync with ArcGIS Server"):
                 )
                 
                 result_json = json.loads(response.text)
-                # Overwrite incoming schema values to align safely with input fields
                 result_json["stop_id"] = str(stop_id)
                 result_json["selected_image_filename"] = str(uploaded_file.name)
                 
-                # Automatically run the writeback function 
+                # Call site unchanged — still 3 arguments
                 sync_success, sync_msg = push_to_arcgis_server(stop_id, result_json, uploaded_file)
                 
                 if sync_success:
@@ -259,7 +304,6 @@ if st.button("Classify & Sync with ArcGIS Server"):
                 else:
                     st.warning(f"AI Eval complete, but Map Sync missed: {sync_msg}")
                 
-                # Display output payload transparently for validation
                 st.subheader("Generated Inventory Payload:")
                 st.json(result_json)
                 
