@@ -196,6 +196,8 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_file) -> 
 
         if "error" in query_resp:
             return False, f"Query failed: {query_resp['error']}"
+        
+        st.write("Raw query response:", query_resp)
 
         features = query_resp.get("features", [])
         if not features:
@@ -259,6 +261,7 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_file) -> 
 
     except Exception as e:
         return False, f"ArcGIS Live Data Stream Exception: {e}"
+    
 
 # ==========================================
 # STREAMLIT UI LAYOUT
