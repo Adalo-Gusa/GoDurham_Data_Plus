@@ -151,11 +151,12 @@ def push_to_arcgis_server(stop_id, gemini_results, uploaded_file):
         # Search the live map database server for the row matching this stop_id
         query_result = layer.query(where=f"stop_id = '{stop_id}'")
         
+        # Locate this block inside push_to_arcgis_server():
         if len(query_result.features) > 0:
             target_feature = query_result.features[0]
-            object_id = target_feature.attributes['OBJECTID'] # Target primary key for mapping layer attachments
+            object_id = target_feature.attributes['OBJECTID']
             
-            # Map Gemini evaluation values straight into the layer table's attributes
+            # CHANGE THE LOOP TO THESE EXPLICIT LINES:
             target_feature.attributes['bus_stop_visible'] = gemini_results.get('bus_stop_visible')
             target_feature.attributes['shelter_number'] = int(gemini_results.get('shelter_number', 0))
             target_feature.attributes['bench_number'] = int(gemini_results.get('bench_number', 0))
@@ -166,7 +167,7 @@ def push_to_arcgis_server(stop_id, gemini_results, uploaded_file):
             target_feature.attributes['landing_pad'] = gemini_results.get('landing_pad')
             target_feature.attributes['notes'] = gemini_results.get('notes')
             
-            # 1. Fire an asynchronous REST call to push the attribute cell writes live
+            # This safely commits the explicit text rows to AGOL
             layer.edit_features(updates=[target_feature])
             
             # 2. Upload the file upload directly to this point feature as a layer attachment asset
