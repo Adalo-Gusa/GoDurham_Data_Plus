@@ -5,6 +5,9 @@ from pathlib import Path
 from PIL import Image
 from google import genai
 from google.genai import types
+import tempfile
+import time
+import requests
 
 # ==========================================
 # CONFIGURATION & API KEY INITIALIZATION
@@ -12,29 +15,13 @@ from google.genai import types
 MODEL_ID = "gemini-3.5-flash"
 GEMINI_PROJECT = "dataplus-godurham"
 
-# Helper function matching your pipeline's local key reader logic
-def load_api_key(path: str) -> str:
-    key_path = Path(path)
-    if not key_path.exists():
-        raise FileNotFoundError(f"Could not find API key file: {key_path}")
-    return key_path.read_text(encoding="utf-8").strip()
-
-# Initialize the Gemini Client for your enterprise project
 try:
-    # Check if running on Streamlit Cloud and inject credentials if present
     if "GOOGLE_APPLICATION_CREDENTIALS_JSON" in st.secrets:
-        import tempfile
-        
-        # 1. Create a persistent temporary file that doesn't instantly close
-        # Streamlit needs this file path to remain valid while the client is active
         tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w")
         tfile.write(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
-        tfile.close() # Close it so the system flushes the data to disk
-        
-        # 2. Tell the environment where to look
+        tfile.close()
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tfile.name
             
-    # 3. Now the client will strictly use your service account file instead of searching the metadata server!
     client = genai.Client(
         vertexai=True,
         project=GEMINI_PROJECT,
@@ -43,7 +30,9 @@ try:
 except Exception as e:
     st.error(f"Failed to initialize Gemini Client: {e}")
 
-# Paste your full PROMPT_PASS_1 here
+# ==========================================
+# PROMPTS & SCHEMAS
+# ==========================================
 PROMPT_PASS_1 = """
 You are an expert visual analyst evaluating a sequence of Street View images for a transit stop accessibility inventory.
 
@@ -79,10 +68,10 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 
 Important: 
 Confidence Scores: bus_stop_visibility, shelter_present, bench_present. trash_can_present
-These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accuratly
+These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accurately
 Represent your confidence in the presence of each of these attributes. It is important that give your honest rating and actually include
-decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classifcation.
-Remember this when assinging your confidence scores. 
+decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classification.
+Remember this when assigning your confidence scores. 
 
 === DEFINITIONS ===
 stop_name: EXACT value saved in variable: "name"
@@ -103,7 +92,7 @@ Return only JSON matching the schema.
 
 PROMPT_PASS_2 = """
 You are an expert visual analyst evaluating a 360-degree panoramic sequence of a transit stop location. 
-YOU ARE A PRECISE MACHINE THAT PRIORITIZES REPRODUCIBILITY. FOLLOW EVER LINE AS IT COMES UP, THE PROMPT IS MENT TO BE FOLLOWED IN ORDER.
+YOU ARE A PRECISE MACHINE THAT PRIORITIZES REPRODUCIBILITY. FOLLOW EVERY LINE AS IT COMES UP, THE PROMPT IS MEANT TO BE FOLLOWED IN ORDER.
 
 INSTRUCTIONS:
 You must SYNTHESIZE the visual evidence from ALL images combined to evaluate the continuous environment.
@@ -133,10 +122,10 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 
 IMPORTANT: 
 Confidence Scores: bus_stop_visibility, shelter_present, bench_present. trash_can_present
-These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accuratly
+These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accurately
 Represent your confidence in the presence of each of these attributes. It is important that give your HONEST rating and actually include
-decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classifcation.
-Remember this when assinging your confidence scores. 
+decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classification.
+Remember this when assigning your confidence scores. 
 
 DEFINITIONS:
 stop_name: EXACT value saved in variable: "name"
@@ -168,38 +157,13 @@ response_schema = {
             "description": "The exact view name (e.g., left, right, center, front, front_right) that best shows the stop."
         },
         "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
-        "bus_stop_visibility_confidence": {
-            "type": "number",
-            "description": "A decimal value between 0.0 and 1.0 representing confidence that there IS a Bus stop. "
-            "1.0 means with ALL certainty a Bus Stop EXISTS "
-            "0.0 means there is no possibility of a Bus Stop AT ALL"
-            
-        },
-        
-        "shelter_present": {
-            "type": "number", 
-            "description": "A decimal value between 0.0 and 1.0 representing confidence that there IS a shelter. "
-            "1.0 means with ALL certainty a shelter EXISTS "
-            "0.0 means there is no possibility of a shelter AT ALL"
-        },
+        "bus_stop_visibility_confidence": {"type": "number"},
+        "shelter_present": {"type": "number"},
         "shelter_number": {"type": "integer"},
-
-        "bench_present": {
-            "type": "number", 
-            "description": "A decimal value between 0.0 and 1.0 representing confidence that there IS a bench. "
-            "1.0 means with ALL certainty a bench EXISTS "
-            "0.0 means there is no possibility of a bench AT ALL"
-        },
+        "bench_present": {"type": "number"},
         "bench_number": {"type": "integer"},
-
-        "trash_can_present": {
-            "type": "number", 
-            "description": "A decimal value between 0.0 and 1.0 representing confidence that there IS a trash can. "
-            "1.0 means with ALL certainty a trash can EXISTS "
-            "0.0 means there is no possibility of a trash can AT ALL"
-        },
+        "trash_can_present": {"type": "number"},
         "trash_can_number": {"type": "integer"},
-        
         "stop_surface": {"type": "string", "enum": ["Grass", "Concrete"]},
         "landing_type": {"type": "string", "enum": ["Paved", "Unpaved", "Unpaved_Grass_Strip_And_Sidewalk"]},
         "sidewalk_connection": {"type": "string", "enum": ["Yes", "No", "NA"]},
@@ -208,7 +172,7 @@ response_schema = {
         "street_lighting": {"type": "string", "enum": ["Yes", "No"]},
         "date": {
             "type": "string",
-            "description": "The exact year and month the image was taken (e.g., 2026-1, 2025-3) explicitly stated in the file name"
+            "description": "The exact year and month the image was taken explicitly stated in the file name."
         },
         "notes": {"type": "string"},
     },
@@ -224,58 +188,183 @@ response_schema = {
 }
 
 # ==========================================
+# ARCGIS TOKEN MANAGEMENT
+# ==========================================
+_token_cache = {"value": None, "expires_at": 0}
+
+def get_arcgis_token() -> str:
+    """Returns a valid token using secrets, auto-refreshing before expiry."""
+    if _token_cache["value"] and time.time() < _token_cache["expires_at"] - 60:
+        return _token_cache["value"]
+
+    resp = requests.post(
+        "https://www.arcgis.com/sharing/rest/oauth2/token",
+        data={
+            "client_id": st.secrets["ARCGIS_CLIENT_ID"],
+            "client_secret": st.secrets["ARCGIS_CLIENT_SECRET"],
+            "grant_type": "client_credentials",
+            "f": "json",
+        },
+    ).json()
+
+    if "access_token" not in resp:
+        raise RuntimeError(f"Token fetch failed: {resp}")
+
+    _token_cache["value"] = resp["access_token"]
+    _token_cache["expires_at"] = time.time() + resp.get("expires_in", 7200)
+    return _token_cache["value"]
+
+# ==========================================
+# BACKEND ARCGIS REST PUSH PIPELINE
+# ==========================================
+def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_list) -> tuple:
+    """Locates feature, pushes attribute overrides, and mounts primary attachment."""
+    try:
+        layer_url = st.secrets["FEATURE_LAYER_URL"]
+        token = get_arcgis_token()
+
+        # 1. Query for the structural OBJECTID
+        query_resp = requests.get(
+            f"{layer_url}/query",
+            params={
+                "where": f"stop_id='{stop_id}'",
+                "outFields": "OBJECTID",
+                "f": "json",
+                "token": token,
+            },
+        ).json()
+
+        if "error" in query_resp:
+            return False, f"Query failed: {query_resp['error']}"
+
+        features = query_resp.get("features", [])
+        if not features:
+            return False, f"Stop ID {stop_id} missing on target map service layer."
+
+        object_id = features[0]["attributes"]["OBJECTID"]
+
+        # 2. Build explicit data mapping payload
+        update_payload = [{
+            "attributes": {
+                "OBJECTID":             int(object_id),
+                "bus_stop_visible":     str(gemini_results.get("bus_stop_visible", "Yes")),
+                "shelter_number":       int(gemini_results.get("shelter_number", 0)),
+                "bench_number":         int(gemini_results.get("bench_number", 0)),
+                "trash_can_number":     int(gemini_results.get("trash_can_number", 0)),
+                "stop_surface":         str(gemini_results.get("stop_surface", "Concrete")),
+                "landing_type":         str(gemini_results.get("landing_type", "Paved")),
+                "sidewalk_connection":  str(gemini_results.get("sidewalk_connection", "Yes")),
+                "landing_pad":          str(gemini_results.get("landing_pad", "Two_doors")),
+                "notes":                str(gemini_results.get("notes", "")),
+            }
+        }]
+
+        # 3. Apply the edit
+        edit_resp = requests.post(
+            f"{layer_url}/applyEdits",
+            data={
+                "updates": json.dumps(update_payload),
+                "f": "json",
+                "token": token,
+            },
+        ).json()
+
+        results = edit_resp.get("updateResults", [])
+        if not results or not results[0].get("success"):
+            err = results[0].get("error", {}) if results else edit_resp
+            return False, f"REST applyEdits failed: {err}"
+
+        # 4. Attachment upload (Pushes the first primary image in the sequence)
+        if uploaded_files_list:
+            primary_file = uploaded_files_list[0]
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=Path(primary_file.name).suffix
+            ) as tmp_file:
+                tmp_file.write(primary_file.getbuffer())
+                tmp_file_path = tmp_file.name
+
+            with open(tmp_file_path, "rb") as f_attach:
+                attach_resp = requests.post(
+                    f"{layer_url}/{object_id}/addAttachment",
+                    params={"token": token, "f": "json"},
+                    # FIXED: Explicitly supplies primary_file.type string block
+                    files={"attachment": (primary_file.name, f_attach, primary_file.type)},
+                ).json()
+
+            os.unlink(tmp_file_path)
+
+            if not attach_resp.get("addAttachmentResult", {}).get("success"):
+                return True, f"Stop {stop_id} attributes synced. ⚠️ Map attachment rejected: {attach_resp}"
+
+        return True, f"Perfect Sync! Stop {stop_id} items updated live on ArcGIS cloud layer."
+
+    except Exception as e:
+        return False, f"ArcGIS Live Data Stream Exception: {e}"
+
+# ==========================================
 # STREAMLIT UI LAYOUT
 # ==========================================
-st.set_page_config(page_title="GoDurham Bus Stop Classifier", layout="centered")
+st.set_page_config(page_title="GoDurham Map Integration System", layout="centered")
 
-st.title("🚌 GoDurham Bus Stop Classifier")
-st.write("Upload a field photo of a bus stop to automatically classify its features and generate the JSON inventory data.")
+st.title(" 🚌 GoDurham Live Map Server Sync Hub")
+st.write("Upload sequential field heading photos to run a panoramic analysis with Gemini and push updates live to the ArcGIS server layer.")
 
-# Input fields for the user
-stop_id = st.text_input("Enter Stop ID (e.g., 5064):")
-uploaded_file = st.file_uploader("Upload Bus Stop Image", type=["jpg", "jpeg", "png"])
+# Navigation Sidebar
+st.sidebar.header("Configuration Panel")
+selected_pass = st.sidebar.selectbox(
+    "Choose Analysis Framework Prompt:",
+    ["Pass 1: Fast-Track & Synthesis", "Pass 2: Continuous Panoramic Check"]
+)
+active_prompt = PROMPT_PASS_1 if "Pass 1" in selected_pass else PROMPT_PASS_2
 
-# Action Button
-if st.button("Classify Stop"):
+# Form Entry Layout
+stop_id = st.text_input("Enter Target Stop ID (e.g., 5203):")
+# MULTI-FILE ATTACHMENT ENABLED:
+uploaded_files = st.file_uploader("Upload Bus Stop Image Sequence Angles", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+
+if st.button("Classify & Sync with ArcGIS Server"):
     if not stop_id:
-        st.warning("Please enter a Stop ID.")
-    elif uploaded_file is None:
-        st.warning("Please upload an image.")
+        st.warning("Please specify a Stop ID to target your feature rows.")
+    elif not uploaded_files:
+        st.warning("Please upload at least one image angle heading.")
     else:
-        # 1. Display the uploaded image on the screen
-        image = Image.open(uploaded_file)
-        st.image(image, caption=f"Stop ID: {stop_id}", use_container_width=True)
+        # Build contents array dynamically with text prompt + image objects
+        api_payload_list = [active_prompt]
         
-        # 2. Run the API call with a visual loading spinner
-        with st.spinner('Analyzing image with Gemini...'):
+        # Display images side-by-side inside columns dynamically
+        cols = st.columns(len(uploaded_files))
+        for idx, file_item in enumerate(uploaded_files):
+            opened_img = Image.open(file_item)
+            api_payload_list.append(opened_img)
+            with cols[idx]:
+                st.image(opened_img, caption=file_item.name, use_container_width=True)
+                
+        with st.spinner('Running Panoramic Multimodal Classification & Mapping Pipeline...'):
             try:
-                # Call the Gemini API directly with the PIL Image
                 response = client.models.generate_content(
                     model=MODEL_ID,
-                    contents=[{PROMPT_PASS_1}, image],
+                    contents=api_payload_list,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                         response_schema=response_schema,
-                        temperature=0.1 # Keep it low for strict, analytical outputs
+                        temperature=0.1
                     )
                 )
                 
-                # 3. Parse and display the result
                 result_json = json.loads(response.text)
+                result_json["stop_id"] = str(stop_id)
+                result_json["selected_image_filename"] = ", ".join([f.name for f in uploaded_files])
                 
-                st.success("Classification Complete!")
+                # Push elements to ArcGIS layer database via REST parameters
+                sync_success, sync_msg = push_to_arcgis_server(stop_id, result_json, uploaded_files)
                 
-                # Display the data nicely in an interactive JSON block
-                st.subheader("Extracted Inventory Data:")
+                if sync_success:
+                    st.success(sync_msg)
+                else:
+                    st.warning(f"AI Evaluation complete, but Map Sync missed: {sync_msg}")
+                
+                st.subheader("Generated Inventory Payload:")
                 st.json(result_json)
                 
-                # Add a button to let the user download the raw JSON file
-                st.download_button(
-                    label="Download JSON Data", 
-                    data=response.text, 
-                    file_name=f"{stop_id}_results.json",
-                    mime="application/json"
-                )
-                
             except Exception as e:
-                st.error(f"An error occurred during classification: {e}")
+                st.error(f"Operational Pipeline Disruption: {e}")
