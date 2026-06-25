@@ -262,16 +262,25 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
         # 2. Build explicit data mapping payload
         update_payload = [{
             "attributes": {
-                "OBJECTID":             int(object_id),
-                "bus_stop_visible":     str(gemini_results.get("bus_stop_visible", "Yes")),
-                "shelter_number":       int(gemini_results.get("shelter_number", 0)),
-                "bench_number":         int(gemini_results.get("bench_number", 0)),
-                "trash_can_number":     int(gemini_results.get("trash_can_number", 0)),
-                "stop_surface":         str(gemini_results.get("stop_surface", "Concrete")),
-                "landing_type":         str(gemini_results.get("landing_type", "Paved")),
-                "sidewalk_connection":  str(gemini_results.get("sidewalk_connection", "Yes")),
-                "landing_pad":          str(gemini_results.get("landing_pad", "Two_doors")),
-                "notes":                str(gemini_results.get("notes", "")),
+                "OBJECTID":                       int(object_id),
+                "bus_stop_visible":               str(gemini_results.get("bus_stop_visible", "Yes")),
+                "bus_stop_visibility_confidence": float(gemini_results.get("bus_stop_visibility_confidence", 0.0)),
+                "shelter_present":                str(gemini_results.get("shelter_present", "No")),
+                "shelter_confidence":             float(gemini_results.get("shelter_confidence", 0.0)),
+                "shelter_number":                 int(gemini_results.get("shelter_number", 0)),
+                "bench_present":                  str(gemini_results.get("bench_present", "No")),
+                "bench_confidence":               float(gemini_results.get("bench_confidence", 0.0)),
+                "bench_number":                   int(gemini_results.get("bench_number", 0)),
+                "trash_can_present":              str(gemini_results.get("trash_can_present", "No")),
+                "trash_can_confidence":           float(gemini_results.get("trash_can_confidence", 0.0)),
+                "trash_can_number":               int(gemini_results.get("trash_can_number", 0)),
+                "stop_surface":                   str(gemini_results.get("stop_surface", "Concrete")),
+                "landing_type":                   str(gemini_results.get("landing_type", "Paved")),
+                "sidewalk_connection":            str(gemini_results.get("sidewalk_connection", "Yes")),
+                "landing_pad":                    str(gemini_results.get("landing_pad", "Two_doors")),
+                "cross_walk":                     str(gemini_results.get("cross_walk", "No")),
+                "street_lighting":                str(gemini_results.get("street_lighting", "No")),
+                "notes":                          str(gemini_results.get("notes", "")),
             }
         }]
 
@@ -334,7 +343,16 @@ selected_pass = st.sidebar.selectbox(
 active_prompt = PROMPT_PASS_1 if "Pass 1" in selected_pass else PROMPT_PASS_2
 
 # Form Entry Layout
-stop_id = st.text_input("Enter Target Stop ID (e.g., 5203):")
+col1, col2, col3 = st.columns(3)
+with col1:
+    stop_id = st.text_input("Enter Target Stop ID (e.g., 5203):")
+with col2:
+    input_lat = st.number_input("Latitude (Optional)", value=0.0, format="%.6f")
+with col3:
+    input_lon = st.number_input("Longitude (Optional)", value=0.0, format="%.6f")
+    
+input_date = st.date_input("Date of Image Capture")
+
 # MULTI-FILE ATTACHMENT ENABLED:
 uploaded_files = st.file_uploader("Upload Bus Stop Image Sequence Angles", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
@@ -368,8 +386,16 @@ if st.button("Classify Bus Stop"):
                 )
                 
                 result_json = json.loads(response.text)
+                
+                # Overwrite or inject environment properties
                 result_json["stop_id"] = str(stop_id)
                 result_json["selected_image_filename"] = ", ".join([f.name for f in uploaded_files])
+                result_json["date"] = input_date.strftime("%Y-%m-%d")
+                
+                if input_lat != 0.0:
+                    result_json["lattitude"] = input_lat
+                if input_lon != 0.0:
+                    result_json["longitude"] = input_lon
                 
                 # Push elements to ArcGIS layer database via REST parameters
                 sync_success, sync_msg = push_to_arcgis_server(stop_id, result_json, uploaded_files)
