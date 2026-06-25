@@ -268,6 +268,7 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
         update_payload = [{
             "attributes": {
                 "OBJECTID":                       int(object_id),
+                "selected_image_filename":        str(sc.get("selected_image_filename", "")),
                 "bus_stop_visible":               encode_binary(gemini_results.get("bus_stop_visible", "Yes")),
                 "bus_stop_visibility_confidence": float(gemini_results.get("bus_stop_visibility_confidence", 0.0)),
                 "shelter_present":                encode_binary(gemini_results.get("shelter_present", "No")),
@@ -346,7 +347,7 @@ st.set_page_config(page_title="GoDurham Map Integration System", layout="centere
 st.title("🚌 GoDurham Bus Stop Classifier")
 st.write("Upload sequential field heading photos to run a panoramic analysis with Gemini")
 
-# Initialize session state tracking variables so data carries across button clicks
+# Initialize session state variables
 if "current_classification" not in st.session_state:
     st.session_state.current_classification = None
 if "last_classified_stop" not in st.session_state:
@@ -373,7 +374,6 @@ input_date = st.date_input("Date of Image Capture")
 
 uploaded_files = st.file_uploader("Upload Bus Stop Image Sequence Angles", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-# Display active staging images if files are attached
 if uploaded_files:
     st.divider()
     cols = st.columns(len(uploaded_files))
@@ -384,77 +384,153 @@ if uploaded_files:
 
 st.divider()
 
-# Layout evaluation command button column split
-btn_col1, btn_col2 = st.columns(2)
-
 # BUTTON 1: RUN EVALUATION ONLY
-with btn_col1:
-    if st.button("Run Gemini Classification", use_container_width=True):
-        if not stop_id:
-            st.warning("Please specify a Stop ID to target your feature rows.")
-        elif not uploaded_files:
-            st.warning("Please upload at least one image angle heading.")
-        else:
-            api_payload_list = [active_prompt]
-            for file_item in uploaded_files:
-                api_payload_list.append(Image.open(file_item))
-                    
-            with st.spinner('Running Multimodal Classification...'):
-                try:
-                    response = client.models.generate_content(
-                        model=MODEL_ID,
-                        contents=api_payload_list,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json",
-                            response_schema=response_schema,
-                            temperature=0.1
-                        )
-                    )
-                    
-                    # Store data safely inside memory state tracking lists
-                    result_json = json.loads(response.text)
-                    result_json["stop_id"] = str(stop_id)
-                    result_json["selected_image_filename"] = ", ".join([f.name for f in uploaded_files])
-                    result_json["date"] = input_date.strftime("%Y-%m-%d")
-                    
-                    if input_lat != 0.0:
-                        result_json["lattitude"] = input_lat
-                    if input_lon != 0.0:
-                        result_json["longitude"] = input_lon
-                        
-                    st.session_state.current_classification = result_json
-                    st.session_state.last_classified_stop = str(stop_id)
-                    st.success("Analysis complete! Review the inventory data schema below before staging push.")
-                    
-                except Exception as e:
-                    st.error(f"Operational Pipeline Disruption: {e}")
-
-# BUTTON 2: SYNC SAVED DATA STATE TO REMOTE SERVER
-with btn_col2:
-    # Only unlock or process execution click if an active profile state exists in background memory
-    if st.session_state.current_classification is not None:
-        if st.button("Push & Sync with ArcGIS Map", type="primary", use_container_width=True):
-            # Ensure the targeted text box matches the active stored instance ID
-            if str(stop_id) != st.session_state.last_classified_stop:
-                st.error("Stop ID value entry mismatch! The input box text does not align with your generated staging results. Run Step 1 again.")
-            else:
-                with st.spinner('Publishing data fields and attachments to ArcGIS cloud...'):
-                    sync_success, sync_msg = push_to_arcgis_server(
-                        st.session_state.last_classified_stop, 
-                        st.session_state.current_classification, 
-                        uploaded_files
-                    )
-                    if sync_success:
-                        st.success(sync_msg)
-                        # Clean out tracking slots following perfect transactions
-                        st.session_state.current_classification = None
-                        st.rerun()
-                    else:
-                        st.error(f"Map Sync aborted: {sync_msg}")
+if st.button("🤖 Step 1: Run Gemini Classification", use_container_width=True):
+    if not stop_id:
+        st.warning("Please specify a Stop ID to target your feature rows.")
+    elif not uploaded_files:
+        st.warning("Please upload at least one image angle heading.")
     else:
-        st.button("🌐 Step 2: Push & Sync with ArcGIS Map", disabled=True, use_container_width=True)
+        api_payload_list = [active_prompt]
+        for file_item in uploaded_files:
+            api_payload_list.append(Image.open(file_item))
+                
+        with st.spinner('Running Multimodal Classification...'):
+            try:
+                response = client.models.generate_content(
+                    model=MODEL_ID,
+                    contents=api_payload_list,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=response_schema,
+                        temperature=0.1
+                    )
+                )
+                
+                result_json = json.loads(response.text)
+                result_json["stop_id"] = str(stop_id)
+                result_json["selected_image_filename"] = ", ".join([f.name for f in uploaded_files])
+                result_json["date"] = input_date.strftime("%Y-%m-%d")
+                
+                if input_lat != 0.0:
+                    result_json["lattitude"] = input_lat
+                if input_lon != 0.0:
+                    result_json["longitude"] = input_lon
+                    
+                st.session_state.current_classification = result_json
+                st.session_state.last_classified_stop = str(stop_id)
+                st.success("Analysis complete! Review and modify fields inside the entry module block below.")
+                
+            except Exception as e:
+                st.error(f"Operational Pipeline Disruption: {e}")
 
-# Display the evaluation payload box below buttons if a staging instance is tracked
+# ============================================================
+# EDITABLE INTERACTIVE ENTRY MATRIX MODULE
+# ============================================================
 if st.session_state.current_classification is not None:
-    st.subheader(f"Staged Inventory Payload (Stop ID: {st.session_state.last_classified_stop}):")
-    st.json(st.session_state.current_classification)
+    st.markdown("### 📝 Interactive Inventory Override & Review Terminal")
+    st.write("Review the model's extraction values and overwrite cells directly before publishing.")
+    
+    # Pre-fetch memory targets to hook onto field default values
+    sc = st.session_state.current_classification
+    
+    with st.form("inventory_override_form"):
+        # Section 1: Binary framework flags
+        f_col1, f_col2, f_col3, f_col4 = st.columns(4)
+        with f_col1:
+            visible_idx = ["Yes", "No", "Unclear"].index(sc.get("bus_stop_visible", "Yes"))
+            form_visible = st.selectbox("Bus Stop Visible", ["Yes", "No", "Unclear"], index=visible_idx)
+        with f_col2:
+            shelter_idx = ["Yes", "No", "Unclear"].index(sc.get("shelter_present", "No"))
+            form_shelter = st.selectbox("Shelter Present", ["Yes", "No", "Unclear"], index=shelter_idx)
+        with f_col3:
+            bench_idx = ["Yes", "No", "Unclear"].index(sc.get("bench_present", "No"))
+            form_bench = st.selectbox("Bench Present", ["Yes", "No", "Unclear"], index=bench_idx)
+        with f_col4:
+            trash_idx = ["Yes", "No", "Unclear"].index(sc.get("trash_can_present", "No"))
+            form_trash = st.selectbox("Trash Can Present", ["Yes", "No", "Unclear"], index=trash_idx)
+
+        # Section 2: Text attributes, counts, and spatial overrides
+        f_col5, f_col6, f_col7, f_col8 = st.columns(4)
+        with f_col5:
+            form_she_num = st.number_input("Shelter Count", min_value=0, value=int(sc.get("shelter_number", 0)), step=1)
+            form_ben_num = st.number_input("Bench Count", min_value=0, value=int(sc.get("bench_number", 0)), step=1)
+            form_tra_num = st.number_input("Trash Can Count", min_value=0, value=int(sc.get("trash_can_number", 0)), step=1)
+        with f_col6:
+            surface_options = ["Concrete", "Grass"]
+            surface_idx = surface_options.index(sc.get("stop_surface", "Concrete")) if sc.get("stop_surface") in surface_options else 0
+            form_surface = st.selectbox("Stop Surface Type", surface_options, index=surface_idx)
+            
+            landing_options = ["Paved", "Unpaved", "Unpaved_Grass_Strip_And_Sidewalk"]
+            landing_idx = landing_options.index(sc.get("landing_type", "Paved")) if sc.get("landing_type") in landing_options else 0
+            form_landing = st.selectbox("Passenger Landing Type", landing_options, index=landing_idx)
+        with f_col7:
+            sidewalk_options = ["Yes", "No", "NA"]
+            sidewalk_idx = sidewalk_options.index(sc.get("sidewalk_connection", "Yes")) if sc.get("sidewalk_connection") in sidewalk_options else 0
+            form_sidewalk = st.selectbox("Sidewalk Connection", sidewalk_options, index=sidewalk_idx)
+            
+            pad_options = ["Two_doors", "One_door", "NA"]
+            pad_idx = pad_options.index(sc.get("landing_pad", "Two_doors")) if sc.get("landing_pad") in pad_options else 0
+            form_pad = st.selectbox("Landing Pad Layout", pad_options, index=pad_idx)
+        with f_col8:
+            crosswalk_idx = ["Yes", "No"].index(sc.get("cross_walk", "No")) if sc.get("cross_walk") in ["Yes", "No"] else 1
+            form_crosswalk = st.selectbox("Crosswalk Nearby", ["Yes", "No"], index=crosswalk_idx)
+            
+            lighting_idx = ["Yes", "No"].index(sc.get("street_lighting", "No")) if sc.get("street_lighting") in ["Yes", "No"] else 1
+            form_lighting = st.selectbox("Street Lighting Present", ["Yes", "No"], index=lighting_idx)
+
+        # Section 3: Geographic strings and text boxes
+        f_col9, f_col10 = st.columns(2)
+        with f_col9:
+            form_lat = st.number_input("Override Latitude", value=float(sc.get("lattitude", input_lat)), format="%.6f")
+            form_lon = st.number_input("Override Longitude", value=float(sc.get("longitude", input_lon)), format="%.6f")
+        with f_col10:
+            form_name = st.text_input("Stop Name/Description Context Field", value=str(sc.get("stop_name", f"GoDurham {stop_id}")))
+            form_date = st.text_input("Operational Date Asset Tag", value=str(sc.get("date", input_date.strftime("%Y-%m-%d"))))
+            
+        form_notes = st.text_area("Audit Engineering Field Comments & Remarks:", value=str(sc.get("notes", "")))
+        
+        # Form publish button trigger
+        commit_sync_action = st.form_submit_button("🌐 Step 2: Push Verified & Corrected Records Live to ArcGIS Map", type="primary")
+
+    if commit_sync_action:
+        if str(stop_id) != st.session_state.last_classified_stop:
+            st.error("Stop ID entry box mismatch! Re-run Step 1 to load the matching staging instance data tree rows.")
+        else:
+            # Recompile corrected form settings parameters straight into active sync dict payload
+            corrected_payload = {
+                "stop_id":                        str(stop_id),
+                "stop_name":                      form_name,
+                "selected_image_filename":        str(sc.get("selected_image_filename", "")),
+                "lattitude":                      float(form_lat),
+                "longitude":                      float(form_lon),
+                "best_view":                      str(sc.get("best_view", "center")),
+                "bus_stop_visible":               form_visible,
+                "shelter_present":                form_shelter,
+                "shelter_number":                 int(form_she_num),
+                "bench_present":                  form_bench,
+                "bench_number":                   int(form_ben_num),
+                "trash_can_present":              form_trash,
+                "trash_can_number":               int(form_tra_num),
+                "stop_surface":                   form_surface,
+                "landing_type":                   form_landing,
+                "sidewalk_connection":            form_sidewalk,
+                "landing_pad":                    form_pad,
+                "cross_walk":                     form_crosswalk,
+                "street_lighting":                form_lighting,
+                "date":                           form_date,
+                "notes":                          form_notes
+            }
+            
+            with st.spinner('Publishing evaluated and user-corrected fields live to ArcGIS Online...'):
+                sync_success, sync_msg = push_to_arcgis_server(
+                    st.session_state.last_classified_stop, 
+                    corrected_payload, 
+                    uploaded_files
+                )
+                if sync_success:
+                    st.success(sync_msg)
+                    st.session_state.current_classification = None
+                    st.rerun()
+                else:
+                    st.error(f"Map Sync aborted: {sync_msg}")
