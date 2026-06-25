@@ -5,8 +5,6 @@ from pathlib import Path
 from PIL import Image
 from google import genai
 from google.genai import types
-from arcgis.gis import GIS
-from arcgis.features import FeatureLayer
 import tempfile
 import time
 import requests
@@ -31,22 +29,6 @@ try:
     )
 except Exception as e:
     st.error(f"Failed to initialize Gemini Client: {e}")
-
-# ArcGIS SDK layer (still used for attachments)
-@st.cache_resource
-def get_arcgis_layer():
-    try:
-        gis = GIS(
-            "https://dukeuniv.maps.arcgis.com",
-            client_id=st.secrets["ARCGIS_CLIENT_ID"],
-            client_secret=st.secrets["ARCGIS_CLIENT_SECRET"]
-        )
-        return FeatureLayer(st.secrets["FEATURE_LAYER_URL"], gis=gis)
-    except Exception as e:
-        st.error(f"Failed to securely authenticate with Duke ArcGIS: {e}")
-        return None
-
-layer = get_arcgis_layer()
 
 # ==========================================
 # PROMPTS & SCHEMAS
@@ -85,11 +67,17 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 - Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
 
 Important: 
-Confidence Scores: bus_stop_visibility, shelter_present, bench_present. trash_can_present
-These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accuratly
+Confidence Scores: bus_stop_visibility_confidence, shelter_conficence, bench_confidence, trash_can_confidence
+These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accurately
 Represent your confidence in the presence of each of these attributes. It is important that give your honest rating and actually include
-decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classifcation.
-Remember this when assinging your confidence scores. 
+decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classification.
+Remember this when assigning your confidence scores. 
+
+Use confidence scores to then mark then mark:
+    bus_stop_visibile: 1 if confidence greater than 0.0, 0 if equal to 0.0
+    shelter_visible: 1 if confidence greater than 0.75, 0 if less than or equal to 0.75
+    bench_visible: 1 if confidence greater than 0.75, 0 if less than or equal to 0.75
+    trash_can_visible: 1 if confidence greater than or equal to 0.4, 0 if less than 0.4
 
 === DEFINITIONS ===
 stop_name: EXACT value saved in variable: "name"
@@ -97,6 +85,66 @@ lattidude: EXACT saved in variable: "lattitude"
 longitude: EXACT saved in variable: "longitude"
 1. shelter_number: Total integer count across ALL images.
 2. bench_number: Total integer count across ALL images. If there is a shelter present there is at least one.
+3. trash_can_number: Total integer count of ANY visible public trash cans. 
+4. stop_surface: "Grass" or "Concrete"
+5. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
+6. sidewalk_connection: "Yes", "No", or "NA"
+7. landing_pad: "Two_doors", "One_door", or "NA"
+8. cross_walk: "Yes", or "No"
+9. street_lighting: "Yes" or "No"
+
+Return only JSON matching the schema.
+"""
+
+PROMPT_PASS_2 = """
+You are an expert visual analyst evaluating a 360-degree panoramic sequence of a transit stop location. 
+YOU ARE A PRECISE MACHINE THAT PRIORITIZES REPRODUCIBILITY. FOLLOW EVERY LINE AS IT COMES UP, THE PROMPT IS MEANT TO BE FOLLOWED IN ORDER.
+
+INSTRUCTIONS:
+You must SYNTHESIZE the visual evidence from ALL images combined to evaluate the continuous environment.
+
+Classification Refresher:
+Scan the provided images for clear, explicit transit infrastructure. If ANY of these components are found then the stop EXISTS.
+1. A GoDurham bus stop sign (often attached to wooden utility poles or metal posts). Depending on the view you may be able to make out "Bus Stop" written on the stop if close enough and have a appropriate angle.
+2. A bus shelter, will likely include a bench situated inside of it.
+3. A public bench either included with the bus shelter, or in close proximity to a bus sign or bus shelter. 
+4. A public trash can adjacent to the road that is near where pedestrians would walk.
+(Note: Parked buses will obstruct view, bike racks, fire hydrants, and BARE utility poles or WITHOUT the up-right rectangle GoDurham bus sign DO NOT count).
+
+Outcome 1: Synthesized "Yes" (Stop Exists)
+- Condition: The combined panorama has ANY of the previously listed classification refreshers(1-4) are present throughout the entire synthesis. THEY DO NOT NEED TO BE IN CLOSE PROXIMITY TO EACH OTHER.
+- Action: Set bus_stop_visible to "Yes". Set best_view to the EXACT string identifier of the image containing any of the components or the best representation of a component. (e.g., "n", "sw", "right"). Synthesize the environment across all images to count features.
+- Add your thought process into the 'notes' attribute in the JSON to help you make this classification, be sure to include the bus stop components in this note.
+
+Outcome 2: Definitively "No" (Stop is Missing)
+- Condition: You have viewed the entire 360 area and found ZERO of the components. (There is absolutely no sign, no shelter, no bench, AND no trash can).
+- Action: Set bus_stop_visible to "No". Classify features you can see (sidewalks, grass). You MUST begin your notes with "MANUAL REVIEW REQUIRED: Definitively no bus stop infrastructure visible in any image."
+- Add your thought process into the 'notes' attribute in the JSON to help you make this classification, be sure to include the bus stop components in this note.
+
+Outcome 3: "Unclear" (Blocked or Obscured)
+- Condition: A parked vehicle (bus, car, truck), heavy foliage, or active construction blocks the view of the curb across ALL relevant images.
+- Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
+- Add your thought process into the 'notes' attribute in the JSON to help you make this classification
+
+IMPORTANT: 
+Confidence Scores: bus_stop_visibility_confidence, shelter_conficence, bench_confidence, trash_can_confidence
+These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accurately
+Represent your confidence in the presence of each of these attributes. It is important that give your HONEST rating and actually include
+decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classification.
+Remember this when assigning your confidence scores. 
+
+Use confidence scores to then mark then mark:
+    bus_stop_visibile: 1 if confidence greater than 0.0, 0 if equal to 0.0
+    shelter_visible: 1 if confidence greater than 0.75, 0 if less than or equal to 0.75
+    bench_visible: 1 if confidence greater than 0.75, 0 if less than or equal to 0.75
+    trash_can_visible: 1 if confidence greater than or equal to 0.4, 0 if less than 0.4
+
+DEFINITIONS:
+stop_name: EXACT value saved in variable: "name"
+lattidude: EXACT saved in variable: "lattitude"
+longitude: EXACT saved in variable: "longitude"
+1. shelter_number: Total integer count across ALL images.
+2. bench_number: Total integer count across ALL images, if there is a shelter present there is at least one.
 3. trash_can_number: Total integer count of ANY visible public trash cans. 
 4. stop_surface: "Grass" or "Concrete"
 5. landing_type: "Paved", "Unpaved", or "Unpaved_Grass_Strip_And_Sidewalk"
@@ -116,14 +164,20 @@ response_schema = {
         "selected_image_filename": {"type": "string"},
         "lattitude": {"type": "number"},
         "longitude": {"type": "number"},
-        "best_view": {"type": "string"},
-        "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
+        "best_view": {
+            "type": "string",
+            "description": "The exact view name (e.g., left, right, center, front, front_right) that best shows the stop."
+        },
         "bus_stop_visibility_confidence": {"type": "number"},
-        "shelter_present": {"type": "number"},
+        "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
+        "shelter_confidence": {"type": "number"},
+        "shelter_present": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "shelter_number": {"type": "integer"},
-        "bench_present": {"type": "number"},
+        "bench_confidence": {"type": "number"},
+        "bench_present": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "bench_number": {"type": "integer"},
-        "trash_can_present": {"type": "number"},
+        "trash_can_confidence": {"type": "number"},
+        "trash_can_present": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "trash_can_number": {"type": "integer"},
         "stop_surface": {"type": "string", "enum": ["Grass", "Concrete"]},
         "landing_type": {"type": "string", "enum": ["Paved", "Unpaved", "Unpaved_Grass_Strip_And_Sidewalk"]},
@@ -131,15 +185,19 @@ response_schema = {
         "landing_pad": {"type": "string", "enum": ["Two_doors", "One_door", "NA"]},
         "cross_walk": {"type": "string", "enum": ["Yes", "No"]},
         "street_lighting": {"type": "string", "enum": ["Yes", "No"]},
-        "date": {"type": "string"},
+        "date": {
+            "type": "string",
+            "description": "The exact year and month the image was taken explicitly stated in the file name."
+        },
         "notes": {"type": "string"},
     },
     "required": [
-        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "best_view",
-        "bus_stop_visible", "bus_stop_visibility_confidence",
-        "stop_surface", "landing_type", "sidewalk_connection", "landing_pad",
-        "shelter_number", "shelter_present", "bench_number", "bench_present",
-        "trash_can_number", "trash_can_present", "date", "street_lighting", "notes"
+        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "best_view", "bus_stop_visibility_confidence", "bus_stop_visible", 
+        "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", 
+        "shelter_confidence", "shelter_number", "shelter_present",
+        "bench_confidence", "bench_number", "bench_present",  
+        "trash_can_confidence","trash_can_number", "trash_can_present", "date",
+        "street_lighting", "notes"
     ],
     "additionalProperties": False
 }
@@ -157,7 +215,7 @@ def get_arcgis_token() -> str:
     resp = requests.post(
         "https://www.arcgis.com/sharing/rest/oauth2/token",
         data={
-            "client_id": st.secrets["ARCGIS_CLIENT_ID"],      # fixed: was using client_secret twice
+            "client_id": st.secrets["ARCGIS_CLIENT_ID"],
             "client_secret": st.secrets["ARCGIS_CLIENT_SECRET"],
             "grant_type": "client_credentials",
             "f": "json",
@@ -171,19 +229,17 @@ def get_arcgis_token() -> str:
     _token_cache["expires_at"] = time.time() + resp.get("expires_in", 7200)
     return _token_cache["value"]
 
+
 # ==========================================
-# BACKEND ARCGIS SYNC & ATTACHMENT PIPELINE
+# BACKEND ARCGIS REST PUSH PIPELINE
 # ==========================================
-def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_file) -> tuple:
-    """
-    Drop-in replacement with original 3-argument signature.
-    Pulls layer_url and token internally — no call-site changes needed.
-    """
+def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_list) -> tuple:
+    """Locates feature, pushes attribute overrides, and mounts primary attachment."""
     try:
         layer_url = st.secrets["FEATURE_LAYER_URL"]
         token = get_arcgis_token()
 
-        # 1. Query for the OBJECTID
+        # 1. Query for the structural OBJECTID
         query_resp = requests.get(
             f"{layer_url}/query",
             params={
@@ -196,8 +252,6 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_file) -> 
 
         if "error" in query_resp:
             return False, f"Query failed: {query_resp['error']}"
-        
-        st.write("Raw query response:", query_resp)
 
         features = query_resp.get("features", [])
         if not features:
@@ -205,7 +259,7 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_file) -> 
 
         object_id = features[0]["attributes"]["OBJECTID"]
 
-        # 2. Build update payload — plain dicts, zero SDK objects
+        # 2. Build explicit data mapping payload
         update_payload = [{
             "attributes": {
                 "OBJECTID":             int(object_id),
@@ -236,58 +290,76 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_file) -> 
             err = results[0].get("error", {}) if results else edit_resp
             return False, f"REST applyEdits failed: {err}"
 
-        # 4. Attachment upload (REST multipart — no SDK layer object needed)
-        if uploaded_file is not None:
+        # 4. Attachment upload (Pushes the first primary image in the sequence)
+        if uploaded_files_list:
+            primary_file = uploaded_files_list[0]
             with tempfile.NamedTemporaryFile(
-                delete=False, suffix=Path(uploaded_file.name).suffix
+                delete=False, suffix=Path(primary_file.name).suffix
             ) as tmp_file:
-                tmp_file.write(uploaded_file.getbuffer())
+                tmp_file.write(primary_file.getbuffer())
                 tmp_file_path = tmp_file.name
 
             with open(tmp_file_path, "rb") as f_attach:
                 attach_resp = requests.post(
                     f"{layer_url}/{object_id}/addAttachment",
                     params={"token": token, "f": "json"},
-                    files={"attachment": (uploaded_file.name, f_attach, uploaded_file.type)},
+                    files={"attachment": (primary_file.name, f_attach, primary_file.type)},
                 ).json()
 
             os.unlink(tmp_file_path)
 
             if not attach_resp.get("addAttachmentResult", {}).get("success"):
-                # Non-fatal: attribute sync succeeded, just warn about attachment
-                return True, f"Stop {stop_id} synced. ⚠️ Attachment upload failed: {attach_resp}"
+                return True, f"Stop {stop_id} attributes synced. ⚠️ Map attachment rejected: {attach_resp}"
 
-        return True, f"Perfect Sync! Stop {stop_id} elements updated."
+        return True, f"Perfect Sync! Stop {stop_id} items updated live on ArcGIS cloud layer."
 
     except Exception as e:
         return False, f"ArcGIS Live Data Stream Exception: {e}"
-    
+
 
 # ==========================================
 # STREAMLIT UI LAYOUT
 # ==========================================
 st.set_page_config(page_title="GoDurham Map Integration System", layout="centered")
 
-st.title("🚌 GoDurham Live Map Server Sync Hub")
-st.write("Upload a live field photo to evaluate it with Gemini and push the outputs straight to the city's ArcGIS infrastructure inventory database.")
+st.title(" 🚌 GoDurham Bus Stop Classifier")
+st.write("Upload sequential field heading photos to run a panoramic analysis with Gemini")
 
-stop_id = st.text_input("Enter Stop ID (e.g., 5238):")
-uploaded_file = st.file_uploader("Upload Bus Stop Image", type=["jpg", "jpeg", "png"])
+# Navigation Sidebar
+st.sidebar.header("Configuration Panel")
+selected_pass = st.sidebar.selectbox(
+    "Choose Analysis Framework Prompt:",
+    ["Pass 1: Fast-Track & Synthesis", "Pass 2: Continuous Panoramic Check"]
+)
+active_prompt = PROMPT_PASS_1 if "Pass 1" in selected_pass else PROMPT_PASS_2
 
-if st.button("Classify & Sync with ArcGIS Server"):
+# Form Entry Layout
+stop_id = st.text_input("Enter Target Stop ID (e.g., 5203):")
+# MULTI-FILE ATTACHMENT ENABLED:
+uploaded_files = st.file_uploader("Upload Bus Stop Image Sequence Angles", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+
+if st.button("Classify Bus Stop"):
     if not stop_id:
         st.warning("Please specify a Stop ID to target your feature rows.")
-    elif uploaded_file is None:
-        st.warning("Please upload a field visualization photo file.")
+    elif not uploaded_files:
+        st.warning("Please upload at least one image angle heading.")
     else:
-        image = Image.open(uploaded_file)
-        st.image(image, caption=f"Processing Staging View for Stop ID: {stop_id}", use_container_width=True)
+        # Build contents array dynamically with text prompt + image objects
+        api_payload_list = [active_prompt]
         
-        with st.spinner('Running Multimodal Classification & Mapping Pipeline...'):
+        # Display images side-by-side inside columns dynamically
+        cols = st.columns(len(uploaded_files))
+        for idx, file_item in enumerate(uploaded_files):
+            opened_img = Image.open(file_item)
+            api_payload_list.append(opened_img)
+            with cols[idx]:
+                st.image(opened_img, caption=file_item.name, use_container_width=True)
+                
+        with st.spinner('Running Multimodal Classification...'):
             try:
                 response = client.models.generate_content(
                     model=MODEL_ID,
-                    contents=[PROMPT_PASS_1, image],
+                    contents=api_payload_list,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                         response_schema=response_schema,
@@ -297,15 +369,15 @@ if st.button("Classify & Sync with ArcGIS Server"):
                 
                 result_json = json.loads(response.text)
                 result_json["stop_id"] = str(stop_id)
-                result_json["selected_image_filename"] = str(uploaded_file.name)
+                result_json["selected_image_filename"] = ", ".join([f.name for f in uploaded_files])
                 
-                # Call site unchanged — still 3 arguments
-                sync_success, sync_msg = push_to_arcgis_server(stop_id, result_json, uploaded_file)
+                # Push elements to ArcGIS layer database via REST parameters
+                sync_success, sync_msg = push_to_arcgis_server(stop_id, result_json, uploaded_files)
                 
                 if sync_success:
                     st.success(sync_msg)
                 else:
-                    st.warning(f"AI Eval complete, but Map Sync missed: {sync_msg}")
+                    st.warning(f"AI Evaluation complete, but Map Sync missed: {sync_msg}")
                 
                 st.subheader("Generated Inventory Payload:")
                 st.json(result_json)
