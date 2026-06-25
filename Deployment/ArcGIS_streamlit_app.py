@@ -387,7 +387,7 @@ st.divider()
 btn_col1, btn_col2 = st.columns(2)
 
 with btn_col1:
-    if st.button("🤖 Step 1: Run Gemini Classification", use_container_width=True):
+    if st.button("Run Gemini Classification", use_container_width=True):
         if not stop_id:
             st.warning("Please specify a Stop ID to target your feature rows.")
         elif not uploaded_files:
@@ -428,7 +428,7 @@ with btn_col1:
 
 with btn_col2:
     if st.session_state.current_classification is not None:
-        if st.button("🌐 Step 2: Push & Sync with ArcGIS Map", type="primary", use_container_width=True):
+        if st.button("Push & Sync with ArcGIS Map", type="primary", use_container_width=True):
             if str(stop_id) != st.session_state.last_classified_stop:
                 st.error("Stop ID value entry mismatch! Run Step 1 again to evaluate the new stop code context.")
             else:
@@ -445,7 +445,7 @@ with btn_col2:
                     else:
                         st.error(f"Map Sync aborted: {sync_msg}")
     else:
-        st.button("🌐 Step 2: Push & Sync with ArcGIS Map", disabled=True, use_container_width=True)
+        st.button("Push & Sync with ArcGIS Map", disabled=True, use_container_width=True)
 
 if st.session_state.current_classification is not None:
     st.subheader(f"Staged Inventory Payload (Stop ID: {st.session_state.last_classified_stop}):")
