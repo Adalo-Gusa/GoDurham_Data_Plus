@@ -268,7 +268,7 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
         update_payload = [{
             "attributes": {
                 "OBJECTID":                       int(object_id),
-                "selected_image_filename":        str(sc.get("selected_image_filename", "")),
+                "selected_image_filename": str(gemini_results.get("selected_image_filename", "")),
                 "bus_stop_visible":               encode_binary(gemini_results.get("bus_stop_visible", "Yes")),
                 "bus_stop_visibility_confidence": float(gemini_results.get("bus_stop_visibility_confidence", 0.0)),
                 "shelter_present":                encode_binary(gemini_results.get("shelter_present", "No")),
