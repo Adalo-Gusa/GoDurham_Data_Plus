@@ -248,7 +248,7 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_file) -> 
                 attach_resp = requests.post(
                     f"{layer_url}/{object_id}/addAttachment",
                     params={"token": token, "f": "json"},
-                    files={"attachment": (uploaded_file.name, f_attach)},
+                    files={"attachment": (uploaded_file.name, f_attach, uploaded_file.type)},
                 ).json()
 
             os.unlink(tmp_file_path)
