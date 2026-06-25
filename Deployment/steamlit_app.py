@@ -67,11 +67,17 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 - Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
 
 Important: 
-Confidence Scores: bus_stop_visibility, shelter_present, bench_present. trash_can_present
+Confidence Scores: bus_stop_visibility_confidence, shelter_conficence, bench_confidence, trash_can_confidence
 These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accurately
 Represent your confidence in the presence of each of these attributes. It is important that give your honest rating and actually include
 decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classification.
 Remember this when assigning your confidence scores. 
+
+Use confidence scores to then mark then mark:
+    bus_stop_visibile: 1 if confidence greater than 0.0, 0 if equal to 0.0
+    shelter_visible: 1 if confidence greater than 0.75, 0 if less than or equal to 0.75
+    bench_visible: 1 if confidence greater than 0.75, 0 if less than or equal to 0.75
+    trash_can_visible: 1 if confidence greater than or equal to 0.4, 0 if less than 0.4
 
 === DEFINITIONS ===
 stop_name: EXACT value saved in variable: "name"
@@ -121,11 +127,17 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 - Add your thought process into the 'notes' attribute in the JSON to help you make this classification
 
 IMPORTANT: 
-Confidence Scores: bus_stop_visibility, shelter_present, bench_present. trash_can_present
+Confidence Scores: bus_stop_visibility_confidence, shelter_conficence, bench_confidence, trash_can_confidence
 These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accurately
 Represent your confidence in the presence of each of these attributes. It is important that give your HONEST rating and actually include
 decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classification.
 Remember this when assigning your confidence scores. 
+
+Use confidence scores to then mark then mark:
+    bus_stop_visibile: 1 if confidence greater than 0.0, 0 if equal to 0.0
+    shelter_visible: 1 if confidence greater than 0.75, 0 if less than or equal to 0.75
+    bench_visible: 1 if confidence greater than 0.75, 0 if less than or equal to 0.75
+    trash_can_visible: 1 if confidence greater than or equal to 0.4, 0 if less than 0.4
 
 DEFINITIONS:
 stop_name: EXACT value saved in variable: "name"
@@ -156,13 +168,16 @@ response_schema = {
             "type": "string",
             "description": "The exact view name (e.g., left, right, center, front, front_right) that best shows the stop."
         },
-        "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "bus_stop_visibility_confidence": {"type": "number"},
-        "shelter_present": {"type": "number"},
+        "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
+        "shelter_confidence": {"type": "number"},
+        "shelter_present": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "shelter_number": {"type": "integer"},
-        "bench_present": {"type": "number"},
+        "bench_confidence": {"type": "number"},
+        "bench_present": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "bench_number": {"type": "integer"},
-        "trash_can_present": {"type": "number"},
+        "trash_can_confidence": {"type": "number"},
+        "trash_can_present": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "trash_can_number": {"type": "integer"},
         "stop_surface": {"type": "string", "enum": ["Grass", "Concrete"]},
         "landing_type": {"type": "string", "enum": ["Paved", "Unpaved", "Unpaved_Grass_Strip_And_Sidewalk"]},
@@ -177,11 +192,11 @@ response_schema = {
         "notes": {"type": "string"},
     },
     "required": [
-        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "best_view", "bus_stop_visible", "bus_stop_visibility_confidence", 
+        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "best_view", "bus_stop_visibility_confidence", "bus_stop_visible", 
         "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", 
-        "shelter_number", "shelter_present",
-        "bench_number", "bench_present",  
-        "trash_can_number", "trash_can_present", "date",
+        "shelter_confidence", "shelter_number", "shelter_present",
+        "bench_confidence", "bench_number", "bench_present",  
+        "trash_can_confidence","trash_can_number", "trash_can_present", "date",
         "street_lighting", "notes"
     ],
     "additionalProperties": False
@@ -236,7 +251,7 @@ stop_id = st.text_input("Enter Target Stop ID (e.g., 5203):")
 # MULTI-FILE ATTACHMENT ENABLED:
 uploaded_files = st.file_uploader("Upload Bus Stop Image Sequence Angles", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-if st.button("Classify & Sync with ArcGIS Server"):
+if st.button("Classify Bus Stop"):
     if not stop_id:
         st.warning("Please specify a Stop ID to target your feature rows.")
     elif not uploaded_files:
@@ -253,7 +268,7 @@ if st.button("Classify & Sync with ArcGIS Server"):
             with cols[idx]:
                 st.image(opened_img, caption=file_item.name, use_container_width=True)
                 
-        with st.spinner('Running Panoramic Multimodal Classification & Mapping Pipeline...'):
+        with st.spinner('Running Multimodal Classification...'):
             try:
                 response = client.models.generate_content(
                     model=MODEL_ID,
