@@ -317,24 +317,24 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
 
         # 4. Attachment upload (Pushes the first primary image in the sequence)
         if uploaded_files_list:
-            primary_file = uploaded_files_list[0]
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=Path(primary_file.name).suffix
-            ) as tmp_file:
-                tmp_file.write(primary_file.getbuffer())
-                tmp_file_path = tmp_file.name
+            for file_item in uploaded_files_list:
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=Path(file_item.name).suffix
+                ) as tmp_file:
+                    tmp_file.write(file_item.getbuffer())
+                    tmp_file_path = tmp_file.name
 
-            with open(tmp_file_path, "rb") as f_attach:
-                attach_resp = requests.post(
-                    f"{layer_url}/{object_id}/addAttachment",
-                    params={"token": token, "f": "json"},
-                    files={"attachment": (primary_file.name, f_attach, primary_file.type)},
-                ).json()
+                with open(tmp_file_path, "rb") as f_attach:
+                    attach_resp = requests.post(
+                        f"{layer_url}/{object_id}/addAttachment",
+                        params={"token": token, "f": "json"},
+                        files={"attachment": (file_item.name, f_attach, file_item.type)},
+                    ).json()
 
-            os.unlink(tmp_file_path)
+                os.unlink(tmp_file_path)
 
-            if not attach_resp.get("addAttachmentResult", {}).get("success"):
-                return True, f"Stop {stop_id} attributes synced. ⚠️ Map attachment rejected: {attach_resp}"
+                if not attach_resp.get("addAttachmentResult", {}).get("success"):
+                    st.warning(f"Map attachment rejected for {file_item.name}: {attach_resp}")
 
         return True, f"Perfect Sync! Stop {stop_id} items updated live on ArcGIS cloud layer."
 
@@ -347,8 +347,14 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
 # ==========================================
 st.set_page_config(page_title="GoDurham Map Integration System", layout="centered")
 
-st.title(" 🚌 GoDurham Bus Stop Classifier")
+st.title("🚌 GoDurham Bus Stop Classifier")
 st.write("Upload sequential field heading photos to run a panoramic analysis with Gemini")
+
+# Initialize session state tracking variables so data carries across button clicks
+if "current_classification" not in st.session_state:
+    st.session_state.current_classification = None
+if "last_classified_stop" not in st.session_state:
+    st.session_state.last_classified_stop = None
 
 # Navigation Sidebar
 st.sidebar.header("Configuration Panel")
@@ -369,60 +375,90 @@ with col3:
     
 input_date = st.date_input("Date of Image Capture")
 
-# MULTI-FILE ATTACHMENT ENABLED:
 uploaded_files = st.file_uploader("Upload Bus Stop Image Sequence Angles", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-if st.button("Classify Bus Stop"):
-    if not stop_id:
-        st.warning("Please specify a Stop ID to target your feature rows.")
-    elif not uploaded_files:
-        st.warning("Please upload at least one image angle heading.")
-    else:
-        # Build contents array dynamically with text prompt + image objects
-        api_payload_list = [active_prompt]
-        
-        # Display images side-by-side inside columns dynamically
-        cols = st.columns(len(uploaded_files))
-        for idx, file_item in enumerate(uploaded_files):
-            opened_img = Image.open(file_item)
-            api_payload_list.append(opened_img)
-            with cols[idx]:
-                st.image(opened_img, caption=file_item.name, use_container_width=True)
-                
-        with st.spinner('Running Multimodal Classification...'):
-            try:
-                response = client.models.generate_content(
-                    model=MODEL_ID,
-                    contents=api_payload_list,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=response_schema,
-                        temperature=0.1
+# Display active staging images if files are attached
+if uploaded_files:
+    st.divider()
+    cols = st.columns(len(uploaded_files))
+    for idx, file_item in enumerate(uploaded_files):
+        opened_img = Image.open(file_item)
+        with cols[idx]:
+            st.image(opened_img, caption=file_item.name, use_container_width=True)
+
+st.divider()
+
+# Layout evaluation command button column split
+btn_col1, btn_col2 = st.columns(2)
+
+# BUTTON 1: RUN EVALUATION ONLY
+with btn_col1:
+    if st.button("🤖 Step 1: Run Gemini Classification", use_container_width=True):
+        if not stop_id:
+            st.warning("Please specify a Stop ID to target your feature rows.")
+        elif not uploaded_files:
+            st.warning("Please upload at least one image angle heading.")
+        else:
+            api_payload_list = [active_prompt]
+            for file_item in uploaded_files:
+                api_payload_list.append(Image.open(file_item))
+                    
+            with st.spinner('Running Multimodal Classification...'):
+                try:
+                    response = client.models.generate_content(
+                        model=MODEL_ID,
+                        contents=api_payload_list,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=response_schema,
+                            temperature=0.1
+                        )
                     )
-                )
-                
-                result_json = json.loads(response.text)
-                
-                # Overwrite or inject environment properties
-                result_json["stop_id"] = str(stop_id)
-                result_json["selected_image_filename"] = ", ".join([f.name for f in uploaded_files])
-                result_json["date"] = input_date.strftime("%Y-%m-%d")
-                
-                if input_lat != 0.0:
-                    result_json["lattitude"] = input_lat
-                if input_lon != 0.0:
-                    result_json["longitude"] = input_lon
-                
-                # Push elements to ArcGIS layer database via REST parameters
-                sync_success, sync_msg = push_to_arcgis_server(stop_id, result_json, uploaded_files)
-                
-                if sync_success:
-                    st.success(sync_msg)
-                else:
-                    st.warning(f"AI Evaluation complete, but Map Sync missed: {sync_msg}")
-                
-                st.subheader("Generated Inventory Payload:")
-                st.json(result_json)
-                
-            except Exception as e:
-                st.error(f"Operational Pipeline Disruption: {e}")
+                    
+                    # Store data safely inside memory state tracking lists
+                    result_json = json.loads(response.text)
+                    result_json["stop_id"] = str(stop_id)
+                    result_json["selected_image_filename"] = ", ".join([f.name for f in uploaded_files])
+                    result_json["date"] = input_date.strftime("%Y-%m-%d")
+                    
+                    if input_lat != 0.0:
+                        result_json["lattitude"] = input_lat
+                    if input_lon != 0.0:
+                        result_json["longitude"] = input_lon
+                        
+                    st.session_state.current_classification = result_json
+                    st.session_state.last_classified_stop = str(stop_id)
+                    st.success("Analysis complete! Review the inventory data schema below before staging push.")
+                    
+                except Exception as e:
+                    st.error(f"Operational Pipeline Disruption: {e}")
+
+# BUTTON 2: SYNC SAVED DATA STATE TO REMOTE SERVER
+with btn_col2:
+    # Only unlock or process execution click if an active profile state exists in background memory
+    if st.session_state.current_classification is not None:
+        if st.button("🌐 Step 2: Push & Sync with ArcGIS Map", type="primary", use_container_width=True):
+            # Ensure the targeted text box matches the active stored instance ID
+            if str(stop_id) != st.session_state.last_classified_stop:
+                st.error("Stop ID value entry mismatch! The input box text does not align with your generated staging results. Run Step 1 again.")
+            else:
+                with st.spinner('Publishing data fields and attachments to ArcGIS cloud...'):
+                    sync_success, sync_msg = push_to_arcgis_server(
+                        st.session_state.last_classified_stop, 
+                        st.session_state.current_classification, 
+                        uploaded_files
+                    )
+                    if sync_success:
+                        st.success(sync_msg)
+                        # Clean out tracking slots following perfect transactions
+                        st.session_state.current_classification = None
+                        st.rerun()
+                    else:
+                        st.error(f"Map Sync aborted: {sync_msg}")
+    else:
+        st.button("🌐 Step 2: Push & Sync with ArcGIS Map", disabled=True, use_container_width=True)
+
+# Display the evaluation payload box below buttons if a staging instance is tracked
+if st.session_state.current_classification is not None:
+    st.subheader(f"Staged Inventory Payload (Stop ID: {st.session_state.last_classified_stop}):")
+    st.json(st.session_state.current_classification)
