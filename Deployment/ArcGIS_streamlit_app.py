@@ -80,7 +80,6 @@ Use confidence scores to then mark then mark:
     trash_can_visible: 1 if confidence greater than or equal to 0.4, 0 if less than 0.4
 
 === DEFINITIONS ===
-stop_name: EXACT value saved in variable: "name"
 lattidude: EXACT saved in variable: "lattitude"
 longitude: EXACT saved in variable: "longitude"
 1. shelter_number: Total integer count across ALL images.
@@ -140,7 +139,6 @@ Use confidence scores to then mark then mark:
     trash_can_visible: 1 if confidence greater than or equal to 0.4, 0 if less than 0.4
 
 DEFINITIONS:
-stop_name: EXACT value saved in variable: "name"
 lattidude: EXACT saved in variable: "lattitude"
 longitude: EXACT saved in variable: "longitude"
 1. shelter_number: Total integer count across ALL images.
@@ -187,7 +185,7 @@ response_schema = {
         "notes": {"type": "string"},
     },
     "required": [
-        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "bus_stop_visibility_confidence", "bus_stop_visible", 
+        "stop_id", "selected_image_filename", "lattitude", "longitude", "bus_stop_visibility_confidence", "bus_stop_visible", 
         "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", 
         "shelter_confidence", "shelter_number", "shelter_present",
         "bench_confidence", "bench_number", "bench_present",  
