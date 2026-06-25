@@ -67,7 +67,7 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 - Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
 
 Important: 
-Confidence Scores: bus_stop_visibility_confidence, shelter_conficence, bench_confidence, trash_can_confidence
+Confidence Scores: bus_stop_visibility_confidence, shelter_confidence, bench_confidence, trash_can_confidence
 These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accurately
 Represent your confidence in the presence of each of these attributes. It is important that give your honest rating and actually include
 decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classification.
@@ -125,8 +125,8 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 - Action: Set bus_stop_visible to "Unclear". Classify whatever background features you can see. You MUST begin your notes with "MANUAL REVIEW REQUIRED: View of the curb is blocked by a vehicle/object."
 - Add your thought process into the 'notes' attribute in the JSON to help you make this classification
 
-IMPORTANT: 
-Confidence Scores: bus_stop_visibility_confidence, shelter_conficence, bench_confidence, trash_can_confidence
+Important: 
+Confidence Scores: bus_stop_visibility_confidence, shelter_confidence, bench_confidence, trash_can_confidence
 These attributes are extremely important. They will show up as decimal values between 0.0 and 1.0 that will accurately
 Represent your confidence in the presence of each of these attributes. It is important that give your HONEST rating and actually include
 decimal values in between 0.0 and 1.0 in a reproducible way as we will experiment around with different thresholds for a final classification.
