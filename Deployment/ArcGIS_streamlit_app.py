@@ -164,10 +164,6 @@ response_schema = {
         "selected_image_filename": {"type": "string"},
         "lattitude": {"type": "number"},
         "longitude": {"type": "number"},
-        "best_view": {
-            "type": "string",
-            "description": "The exact view name (e.g., left, right, center, front, front_right) that best shows the stop."
-        },
         "bus_stop_visibility_confidence": {"type": "number"},
         "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "shelter_confidence": {"type": "number"},
@@ -192,7 +188,7 @@ response_schema = {
         "notes": {"type": "string"},
     },
     "required": [
-        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "best_view", "bus_stop_visibility_confidence", "bus_stop_visible", 
+        "stop_id", "stop_name", "selected_image_filename", "lattitude", "longitude", "bus_stop_visibility_confidence", "bus_stop_visible", 
         "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", 
         "shelter_confidence", "shelter_number", "shelter_present",
         "bench_confidence", "bench_number", "bench_present",  
@@ -393,7 +389,7 @@ btn_col1, btn_col2 = st.columns(2)
 
 # BUTTON 1: RUN EVALUATION ONLY
 with btn_col1:
-    if st.button("🤖 Step 1: Run Gemini Classification", use_container_width=True):
+    if st.button("Run Gemini Classification", use_container_width=True):
         if not stop_id:
             st.warning("Please specify a Stop ID to target your feature rows.")
         elif not uploaded_files:
@@ -437,7 +433,7 @@ with btn_col1:
 with btn_col2:
     # Only unlock or process execution click if an active profile state exists in background memory
     if st.session_state.current_classification is not None:
-        if st.button("🌐 Step 2: Push & Sync with ArcGIS Map", type="primary", use_container_width=True):
+        if st.button("Push & Sync with ArcGIS Map", type="primary", use_container_width=True):
             # Ensure the targeted text box matches the active stored instance ID
             if str(stop_id) != st.session_state.last_classified_stop:
                 st.error("Stop ID value entry mismatch! The input box text does not align with your generated staging results. Run Step 1 again.")
