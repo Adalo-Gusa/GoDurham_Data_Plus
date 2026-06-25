@@ -214,100 +214,14 @@ def get_arcgis_token() -> str:
     _token_cache["expires_at"] = time.time() + resp.get("expires_in", 7200)
     return _token_cache["value"]
 
-# ==========================================
-# BACKEND ARCGIS REST PUSH PIPELINE
-# ==========================================
-def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_list) -> tuple:
-    """Locates feature, pushes attribute overrides, and mounts primary attachment."""
-    try:
-        layer_url = st.secrets["FEATURE_LAYER_URL"]
-        token = get_arcgis_token()
-
-        # 1. Query for the structural OBJECTID
-        query_resp = requests.get(
-            f"{layer_url}/query",
-            params={
-                "where": f"stop_id='{stop_id}'",
-                "outFields": "OBJECTID",
-                "f": "json",
-                "token": token,
-            },
-        ).json()
-
-        if "error" in query_resp:
-            return False, f"Query failed: {query_resp['error']}"
-
-        features = query_resp.get("features", [])
-        if not features:
-            return False, f"Stop ID {stop_id} missing on target map service layer."
-
-        object_id = features[0]["attributes"]["OBJECTID"]
-
-        # 2. Build explicit data mapping payload
-        update_payload = [{
-            "attributes": {
-                "OBJECTID":             int(object_id),
-                "bus_stop_visible":     str(gemini_results.get("bus_stop_visible", "Yes")),
-                "shelter_number":       int(gemini_results.get("shelter_number", 0)),
-                "bench_number":         int(gemini_results.get("bench_number", 0)),
-                "trash_can_number":     int(gemini_results.get("trash_can_number", 0)),
-                "stop_surface":         str(gemini_results.get("stop_surface", "Concrete")),
-                "landing_type":         str(gemini_results.get("landing_type", "Paved")),
-                "sidewalk_connection":  str(gemini_results.get("sidewalk_connection", "Yes")),
-                "landing_pad":          str(gemini_results.get("landing_pad", "Two_doors")),
-                "notes":                str(gemini_results.get("notes", "")),
-            }
-        }]
-
-        # 3. Apply the edit
-        edit_resp = requests.post(
-            f"{layer_url}/applyEdits",
-            data={
-                "updates": json.dumps(update_payload),
-                "f": "json",
-                "token": token,
-            },
-        ).json()
-
-        results = edit_resp.get("updateResults", [])
-        if not results or not results[0].get("success"):
-            err = results[0].get("error", {}) if results else edit_resp
-            return False, f"REST applyEdits failed: {err}"
-
-        # 4. Attachment upload (Pushes the first primary image in the sequence)
-        if uploaded_files_list:
-            primary_file = uploaded_files_list[0]
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=Path(primary_file.name).suffix
-            ) as tmp_file:
-                tmp_file.write(primary_file.getbuffer())
-                tmp_file_path = tmp_file.name
-
-            with open(tmp_file_path, "rb") as f_attach:
-                attach_resp = requests.post(
-                    f"{layer_url}/{object_id}/addAttachment",
-                    params={"token": token, "f": "json"},
-                    # FIXED: Explicitly supplies primary_file.type string block
-                    files={"attachment": (primary_file.name, f_attach, primary_file.type)},
-                ).json()
-
-            os.unlink(tmp_file_path)
-
-            if not attach_resp.get("addAttachmentResult", {}).get("success"):
-                return True, f"Stop {stop_id} attributes synced. ⚠️ Map attachment rejected: {attach_resp}"
-
-        return True, f"Perfect Sync! Stop {stop_id} items updated live on ArcGIS cloud layer."
-
-    except Exception as e:
-        return False, f"ArcGIS Live Data Stream Exception: {e}"
 
 # ==========================================
 # STREAMLIT UI LAYOUT
 # ==========================================
 st.set_page_config(page_title="GoDurham Map Integration System", layout="centered")
 
-st.title(" 🚌 GoDurham Live Map Server Sync Hub")
-st.write("Upload sequential field heading photos to run a panoramic analysis with Gemini and push updates live to the ArcGIS server layer.")
+st.title(" 🚌 GoDurham Bus Stop Classifier")
+st.write("Upload sequential field heading photos to run a panoramic analysis with Gemini")
 
 # Navigation Sidebar
 st.sidebar.header("Configuration Panel")
@@ -354,17 +268,7 @@ if st.button("Classify & Sync with ArcGIS Server"):
                 result_json = json.loads(response.text)
                 result_json["stop_id"] = str(stop_id)
                 result_json["selected_image_filename"] = ", ".join([f.name for f in uploaded_files])
-                
-                # Push elements to ArcGIS layer database via REST parameters
-                sync_success, sync_msg = push_to_arcgis_server(stop_id, result_json, uploaded_files)
-                
-                if sync_success:
-                    st.success(sync_msg)
-                else:
-                    st.warning(f"AI Evaluation complete, but Map Sync missed: {sync_msg}")
-                
-                st.subheader("Generated Inventory Payload:")
-                st.json(result_json)
+            
                 
             except Exception as e:
                 st.error(f"Operational Pipeline Disruption: {e}")
