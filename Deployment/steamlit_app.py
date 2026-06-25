@@ -268,7 +268,10 @@ if st.button("Classify & Sync with ArcGIS Server"):
                 result_json = json.loads(response.text)
                 result_json["stop_id"] = str(stop_id)
                 result_json["selected_image_filename"] = ", ".join([f.name for f in uploaded_files])
-            
+                
+                
+                st.subheader("Generated Inventory Payload:")
+                st.json(result_json)
                 
             except Exception as e:
                 st.error(f"Operational Pipeline Disruption: {e}")
