@@ -69,6 +69,7 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 IMPORTANT:
 1. FIRST, determine the decimal confidence score (0.0 to 1.0) for: 
    bus_stop_visibility_confidence, shelter_confidence, bench_confidence, and trash_can_confidence.
+   The scale is from 0.0 to 1.0. 0.0 means there is NO CHANCE of the component. 1.0 means without a doubt the component is there.
    You MUST output these as precise floats (e.g., 0.85, 0.42). DO NOT default to 1.0.
 
 2. SECOND, use these calculated decimal scores to set the binary 'present' fields:
@@ -128,6 +129,7 @@ Outcome 3: "Unclear" (Blocked or Obscured)
 IMPORTANT:
 1. FIRST, determine the decimal confidence score (0.0 to 1.0) for: 
    bus_stop_visibility_confidence, shelter_confidence, bench_confidence, and trash_can_confidence.
+   The scale is from 0.0 to 1.0. 0.0 means there is NO CHANCE of the component. 1.0 means without a doubt the component is there.
    You MUST output these as precise floats (e.g., 0.85, 0.42). DO NOT default to 1.0.
 
 2. SECOND, use these calculated decimal scores to set the binary 'present' fields:
