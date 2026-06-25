@@ -259,30 +259,46 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
 
         object_id = features[0]["attributes"]["OBJECTID"]
 
+        # Helper function: ArcGIS strictly requires integer bits (1 or 0) for these DB fields
+        def encode_binary(val):
+            val_str = str(val).strip().lower()
+            if val_str in ['yes', 'true', '1']: return 1
+            if val_str in ['no', 'false', '0']: return 0
+            if val_str == 'unclear': return 2
+            try: return int(val)
+            except: return 0
+
         # 2. Build explicit data mapping payload
         update_payload = [{
             "attributes": {
                 "OBJECTID":                       int(object_id),
-                "bus_stop_visible":               str(gemini_results.get("bus_stop_visible", "Yes")),
+                "bus_stop_visible":               encode_binary(gemini_results.get("bus_stop_visible", "Yes")),
                 "bus_stop_visibility_confidence": float(gemini_results.get("bus_stop_visibility_confidence", 0.0)),
-                "shelter_present":                str(gemini_results.get("shelter_present", "No")),
+                "shelter_present":                encode_binary(gemini_results.get("shelter_present", "No")),
                 "shelter_confidence":             float(gemini_results.get("shelter_confidence", 0.0)),
                 "shelter_number":                 int(gemini_results.get("shelter_number", 0)),
-                "bench_present":                  str(gemini_results.get("bench_present", "No")),
+                "bench_present":                  encode_binary(gemini_results.get("bench_present", "No")),
                 "bench_confidence":               float(gemini_results.get("bench_confidence", 0.0)),
                 "bench_number":                   int(gemini_results.get("bench_number", 0)),
-                "trash_can_present":              str(gemini_results.get("trash_can_present", "No")),
+                "trash_can_present":              encode_binary(gemini_results.get("trash_can_present", "No")),
                 "trash_can_confidence":           float(gemini_results.get("trash_can_confidence", 0.0)),
                 "trash_can_number":               int(gemini_results.get("trash_can_number", 0)),
                 "stop_surface":                   str(gemini_results.get("stop_surface", "Concrete")),
                 "landing_type":                   str(gemini_results.get("landing_type", "Paved")),
                 "sidewalk_connection":            str(gemini_results.get("sidewalk_connection", "Yes")),
                 "landing_pad":                    str(gemini_results.get("landing_pad", "Two_doors")),
-                "cross_walk":                     str(gemini_results.get("cross_walk", "No")),
-                "street_lighting":                str(gemini_results.get("street_lighting", "No")),
+                "cross_walk":                     encode_binary(gemini_results.get("cross_walk", "No")),
+                "street_lighting":                encode_binary(gemini_results.get("street_lighting", "No")),
+                "date":                           str(gemini_results.get("date", "")),
                 "notes":                          str(gemini_results.get("notes", "")),
             }
         }]
+
+        # Inject spatial parameters into the push payload if provided dynamically
+        if "lattitude" in gemini_results and gemini_results["lattitude"] != 0.0:
+            update_payload[0]["attributes"]["lattitude"] = float(gemini_results["lattitude"])
+        if "longitude" in gemini_results and gemini_results["longitude"] != 0.0:
+            update_payload[0]["attributes"]["longitude"] = float(gemini_results["longitude"])
 
         # 3. Apply the edit
         edit_resp = requests.post(
