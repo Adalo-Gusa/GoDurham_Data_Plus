@@ -160,7 +160,6 @@ response_schema = {
     "type": "object",
     "properties": {
         "stop_id": {"type": "string"},
-        "stop_name": {"type": "string"},
         "selected_image_filename": {"type": "string"},
         "lattitude": {"type": "number"},
         "longitude": {"type": "number"},
