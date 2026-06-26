@@ -161,8 +161,6 @@ response_schema = {
     "properties": {
         "stop_id": {"type": "string"},
         "selected_image_filename": {"type": "string"},
-        "lattitude": {"type": "number"},
-        "longitude": {"type": "number"},
         "bus_stop_visibility_confidence": {"type": "number"},
         "bus_stop_visible": {"type": "string", "enum": ["Yes", "No", "Unclear"]},
         "shelter_confidence": {"type": "number"},
@@ -187,7 +185,7 @@ response_schema = {
         "notes": {"type": "string"},
     },
     "required": [
-        "stop_id", "selected_image_filename", "lattitude", "longitude", "bus_stop_visibility_confidence", "bus_stop_visible", 
+        "stop_id", "selected_image_filename", "bus_stop_visibility_confidence", "bus_stop_visible", 
         "stop_surface", "landing_type", "sidewalk_connection", "landing_pad", 
         "shelter_confidence", "shelter_number", "shelter_present",
         "bench_confidence", "bench_number", "bench_present",  
