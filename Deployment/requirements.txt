@@ -9,3 +9,4 @@ pyarrow>=17.0.0,<24.0.0
 altair==6.2.1
 arcgis==2.4.3
 requests==2.34.2
+pyheif==0.8.0
