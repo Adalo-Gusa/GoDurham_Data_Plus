@@ -355,36 +355,40 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
                 display_name = file_item.name.replace(Path(file_item.name).suffix, ".jpg") if is_heic else file_item.name
                 mime_type = "image/jpeg" if is_heic else file_item.type
 
-                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+                # Create a secure named temporary file path manually to avoid context manager racing conditions
+                fd, tmp_file_path = tempfile.mkstemp(suffix=suffix)
+                try:
                     if is_heic:
-                        # Open with standard Pillow structure and save directly as JPEG
+                        file_item.seek(0)
                         img = Image.open(file_item)
-                        img.convert("RGB").save(tmp_file.name, "JPEG")
+                        # Save directly using the string file path
+                        img.convert("RGB").save(tmp_file_path, "JPEG")
                         file_item.seek(0)
                     else:
-                        tmp_file.write(file_item.getbuffer())
-                    tmp_file_path = tmp_file.name
+                        file_item.seek(0)
+                        with os.fdopen(fd, 'wb') as tmp_write:
+                            tmp_write.write(file_item.getbuffer())
+                        file_item.seek(0)
 
-                with open(tmp_file_path, "rb") as f_attach:
-                    attach_resp = requests.post(
-                        f"{layer_url}/{object_id}/addAttachment",
-                        params={"token": token, "f": "json"},
-                        files={"attachment": (display_name, f_attach, mime_type)},
-                    ).json()
+                    # Open the normalized file to safely stream to ArcGIS REST API
+                    with open(tmp_file_path, "rb") as f_attach:
+                        attach_resp = requests.post(
+                            f"{layer_url}/{object_id}/addAttachment",
+                            params={"token": token, "f": "json"},
+                            files={"attachment": (display_name, f_attach, mime_type)},
+                        ).json()
 
-                os.unlink(tmp_file_path)
+                    if not attach_resp.get("addAttachmentResult", {}).get("success"):
+                        st.warning(f"Map attachment rejected for {file_item.name}: {attach_resp}")
 
-                with open(tmp_file_path, "rb") as f_attach:
-                    attach_resp = requests.post(
-                        f"{layer_url}/{object_id}/addAttachment",
-                        params={"token": token, "f": "json"},
-                        files={"attachment": (file_item.name, f_attach, file_item.type)},
-                    ).json()
-
-                os.unlink(tmp_file_path)
-
-                if not attach_resp.get("addAttachmentResult", {}).get("success"):
-                    st.warning(f"Map attachment rejected for {file_item.name}: {attach_resp}")
+                finally:
+                    # Always clean up the temporary file from the OS /tmp directory
+                    try:
+                        os.close(fd)
+                    except:
+                        pass
+                    if os.path.exists(tmp_file_path):
+                        os.unlink(tmp_file_path)
 
         return True, f"Perfect Sync! Stop {stop_id} items updated live on ArcGIS cloud layer."
 
