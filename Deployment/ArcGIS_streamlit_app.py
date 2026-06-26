@@ -3,7 +3,7 @@ import os
 import json
 from pathlib import Path
 from PIL import Image
-import pyheif
+from pillow_heif import register_heif_opener
 import io
 from google import genai
 from google.genai import types
@@ -355,11 +355,9 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
 
                 with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
                     if is_heic:
-                        heif_file = pyheif.read(file_item.read())
-                        img = Image.frombytes(
-                            heif_file.mode, heif_file.size, heif_file.data, "raw", heif_file.mode, heif_file.stride
-                        ).convert("RGB")
-                        img.save(tmp_file.name, "JPEG")
+                        # Open with standard Pillow structure and save directly as JPEG
+                        img = Image.open(file_item)
+                        img.convert("RGB").save(tmp_file.name, "JPEG")
                         file_item.seek(0)
                     else:
                         tmp_file.write(file_item.getbuffer())
@@ -431,16 +429,9 @@ if uploaded_files:
     st.divider()
     cols = st.columns(len(uploaded_files))
     for idx, file_item in enumerate(uploaded_files):
-        # Read file into memory or handle HEIC conversion
-        if file_item.name.lower().endswith(('.heic', '.heif')):
-            # Pass the file object directly to pyheif
-            heif_file = pyheif.read(file_item.read())
-            opened_img = Image.frombytes(
-                heif_file.mode, heif_file.size, heif_file.data, "raw", heif_file.mode, heif_file.stride
-            ).convert("RGB")
-            file_item.seek(0) # Reset stream pointer for later use
-        else:
-            opened_img = Image.open(file_item)
+        # Image.open now handles HEIC out-of-the-box!
+        opened_img = Image.open(file_item)
+        file_item.seek(0) # Reset stream pointer for security
             
         with cols[idx]:
             st.image(opened_img, caption=file_item.name, use_container_width=True)
@@ -458,15 +449,9 @@ with btn_col1:
         else:
             api_payload_list = [active_prompt]
             for file_item in uploaded_files:
-                if file_item.name.lower().endswith(('.heic', '.heif')):
-                    heif_file = pyheif.read(file_item.read())
-                    converted_img = Image.frombytes(
-                        heif_file.mode, heif_file.size, heif_file.data, "raw", heif_file.mode, heif_file.stride
-                    ).convert("RGB")
-                    api_payload_list.append(converted_img)
-                    file_item.seek(0) # Reset stream for next use step
-                else:
-                    api_payload_list.append(Image.open(file_item))
+                # No custom conversion blocks needed anymore
+                api_payload_list.append(Image.open(file_item))
+                file_item.seek(0)
                     
             with st.spinner('Running Multimodal Classification...'):
                 try:
