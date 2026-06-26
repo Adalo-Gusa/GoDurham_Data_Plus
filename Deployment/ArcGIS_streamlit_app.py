@@ -3,6 +3,8 @@ import os
 import json
 from pathlib import Path
 from PIL import Image
+import pyheif
+import io
 from google import genai
 from google.genai import types
 import tempfile
@@ -226,6 +228,40 @@ def get_arcgis_token() -> str:
 # ==========================================
 # BACKEND ARCGIS REST PUSH PIPELINE
 # ==========================================
+
+def convert_heic_to_jpeg(heic_file_path):
+    # Read the HEIC file
+    heif_file = pyheif.read(heic_file_path)
+    
+    # Convert to a PIL Image
+    image = Image.frombytes(
+        heif_file.mode, 
+        heif_file.size, 
+        heif_file.data, 
+        "raw", 
+        heif_file.mode, 
+        heif_file.stride,
+    )
+    
+    # Convert to RGB (required for saving as JPEG)
+    image = image.convert("RGB")
+    
+    # Save to a byte stream to mimic a standard file object
+    byte_io = io.BytesIO()
+    image.save(byte_io, "JPEG")
+    byte_io.seek(0)
+    
+    return byte_io
+
+# Usage in your pipeline:
+def process_image(file_path):
+    if file_path.lower().endswith(('.heic', '.heif')):
+        image_data = convert_heic_to_jpeg(file_path)
+    else:
+        image_data = open(file_path, 'rb')
+    # ... pass image_data to your Gemini processing
+
+
 def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_list) -> tuple:
     """Locates feature, pushes attribute overrides, and mounts primary attachment."""
     try:
@@ -309,14 +345,34 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
             err = results[0].get("error", {}) if results else edit_resp
             return False, f"REST applyEdits failed: {err}"
 
-        # 4. Attachment upload (Pushes the first primary image in the sequence)
+        # 4. Attachment upload (Converts HEIC to JPEG on-the-fly for clean GIS maps)
         if uploaded_files_list:
             for file_item in uploaded_files_list:
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=Path(file_item.name).suffix
-                ) as tmp_file:
-                    tmp_file.write(file_item.getbuffer())
+                is_heic = file_item.name.lower().endswith(('.heic', '.heif'))
+                suffix = ".jpg" if is_heic else Path(file_item.name).suffix
+                display_name = file_item.name.replace(Path(file_item.name).suffix, ".jpg") if is_heic else file_item.name
+                mime_type = "image/jpeg" if is_heic else file_item.type
+
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+                    if is_heic:
+                        heif_file = pyheif.read(file_item.read())
+                        img = Image.frombytes(
+                            heif_file.mode, heif_file.size, heif_file.data, "raw", heif_file.mode, heif_file.stride
+                        ).convert("RGB")
+                        img.save(tmp_file.name, "JPEG")
+                        file_item.seek(0)
+                    else:
+                        tmp_file.write(file_item.getbuffer())
                     tmp_file_path = tmp_file.name
+
+                with open(tmp_file_path, "rb") as f_attach:
+                    attach_resp = requests.post(
+                        f"{layer_url}/{object_id}/addAttachment",
+                        params={"token": token, "f": "json"},
+                        files={"attachment": (display_name, f_attach, mime_type)},
+                    ).json()
+
+                os.unlink(tmp_file_path)
 
                 with open(tmp_file_path, "rb") as f_attach:
                     attach_resp = requests.post(
@@ -375,7 +431,17 @@ if uploaded_files:
     st.divider()
     cols = st.columns(len(uploaded_files))
     for idx, file_item in enumerate(uploaded_files):
-        opened_img = Image.open(file_item)
+        # Read file into memory or handle HEIC conversion
+        if file_item.name.lower().endswith(('.heic', '.heif')):
+            # Pass the file object directly to pyheif
+            heif_file = pyheif.read(file_item.read())
+            opened_img = Image.frombytes(
+                heif_file.mode, heif_file.size, heif_file.data, "raw", heif_file.mode, heif_file.stride
+            ).convert("RGB")
+            file_item.seek(0) # Reset stream pointer for later use
+        else:
+            opened_img = Image.open(file_item)
+            
         with cols[idx]:
             st.image(opened_img, caption=file_item.name, use_container_width=True)
 
@@ -392,7 +458,15 @@ with btn_col1:
         else:
             api_payload_list = [active_prompt]
             for file_item in uploaded_files:
-                api_payload_list.append(Image.open(file_item))
+                if file_item.name.lower().endswith(('.heic', '.heif')):
+                    heif_file = pyheif.read(file_item.read())
+                    converted_img = Image.frombytes(
+                        heif_file.mode, heif_file.size, heif_file.data, "raw", heif_file.mode, heif_file.stride
+                    ).convert("RGB")
+                    api_payload_list.append(converted_img)
+                    file_item.seek(0) # Reset stream for next use step
+                else:
+                    api_payload_list.append(Image.open(file_item))
                     
             with st.spinner('Running Multimodal Classification...'):
                 try:
