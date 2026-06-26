@@ -369,7 +369,7 @@ with col3:
     
 input_date = st.date_input("Date of Image Capture")
 
-uploaded_files = st.file_uploader("Upload Bus Stop Image Sequence Angles", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload Bus Stop Image Sequence Angles", type=["jpg", "jpeg", "png", "heic"], accept_multiple_files=True)
 
 if uploaded_files:
     st.divider()
