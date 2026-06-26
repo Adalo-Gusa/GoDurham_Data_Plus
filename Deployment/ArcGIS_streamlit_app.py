@@ -11,6 +11,8 @@ import tempfile
 import time
 import requests
 
+register_heif_opener()
+
 # ==========================================
 # CONFIGURATION & API KEY INITIALIZATION
 # ==========================================
@@ -429,9 +431,11 @@ if uploaded_files:
     st.divider()
     cols = st.columns(len(uploaded_files))
     for idx, file_item in enumerate(uploaded_files):
-        # Image.open now handles HEIC out-of-the-box!
+        # CRITICAL: Reset the file stream pointer to the beginning
+        file_item.seek(0) 
+        
         opened_img = Image.open(file_item)
-        file_item.seek(0) # Reset stream pointer for security
+        file_item.seek(0) # Reset again for the next pipeline step
             
         with cols[idx]:
             st.image(opened_img, caption=file_item.name, use_container_width=True)
