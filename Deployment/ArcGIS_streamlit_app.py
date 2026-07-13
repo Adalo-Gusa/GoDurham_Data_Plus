@@ -304,7 +304,7 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
             "attributes": {
                 "OBJECTID":                       int(object_id),
                 "selected_image_filename": str(gemini_results.get("selected_image_filename", "")),
-                "bus_stop_visible":               encode_binary(gemini_results.get("bus_stop_visible", "Yes")),
+                "bus_stop_visible":               gemini_results.get("bus_stop_visible", "Yes"),
                 "bus_stop_visibility_confidence": float(gemini_results.get("bus_stop_visibility_confidence", 0.0)),
                 "shelter_present":                encode_binary(gemini_results.get("shelter_present", "No")),
                 "shelter_confidence":             float(gemini_results.get("shelter_confidence", 0.0)),
@@ -319,8 +319,8 @@ def push_to_arcgis_server(stop_id: str, gemini_results: dict, uploaded_files_lis
                 "landing_type":                   str(gemini_results.get("landing_type", "Paved")),
                 "sidewalk_connection":            str(gemini_results.get("sidewalk_connection", "Yes")),
                 "landing_pad":                    str(gemini_results.get("landing_pad", "Two_doors")),
-                "cross_walk":                     encode_binary(gemini_results.get("cross_walk", "No")),
-                "street_lighting":                encode_binary(gemini_results.get("street_lighting", "No")),
+                "cross_walk":                     gemini_results.get("cross_walk", "No"),
+                "street_lighting":                gemini_results.get("street_lighting", "No"),
                 "date":                           str(gemini_results.get("date", "")),
                 "notes":                          str(gemini_results.get("notes", "")),
             }
