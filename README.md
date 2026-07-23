@@ -1,47 +1,41 @@
+GoDurham – Bus Stop Inventory & Bayesian Cleaning Priority Modeling
+Overview
+This repository contains the modeling, data collection, and deployment workflow for the GoDurham Data+ 2026 Project.
 
-Desktop Inventory Protocol
+Project Goals:
 
-To record and update our bus stop inventory for comparison to the city's field, we are going to be using data from images obtained from Google Maps street view. To obtain these images, we will implement a Google Maps API scraper to get street view images of every bus stop in Durham from 2025 onward. To analyze the data we will train and implement a machine learning model either through Google Cloud Vision. In the provided spreadsheet, we were given the latitude and longitude of each bus stop in Durham. We will restate this data in our inventory. The attributes we will be collecting include the presence of a (1) shelter, (2) bus sign, (3) GoLive sign, (4) bench, (5) sidewalk, (6) light, (7) trashcan, and (8) ADA pad recorded with a “Yes” or “No” contingent on their presence. We will specify if a trashcan has a lid. The (9) surface type of the stop will also be recorded, with its corresponding value being a string depending on the surface. For example, a stop surrounded by grass would have a surface type value of “grassy.” Further, aiming to avoid violation of Americans with Disabilities Act, we’ll come up with a metric to score the condition based off off other binary indicator, 
+Automated Inventory: Create an up-to-date desktop inventory of GoDurham's 839+ bus stops using web scraping and AI, minimizing manual field visits.
 
-These attributes provide an easily comparable overview of the amenities and quality of the bus stops. This would ideally give the city information to identify the bus stops most in need of maintenance and improvements. Furthermore, we will only collect data from street view images taken from 2025 and onward. For obscured or unclear views of the bus stop, the specific attribute will be attributed a NA value with an asterisk which states that the attribute is ambiguous
+Data-Driven Cleaning: Replace manual cleaning schedules with a Bayesian statistical model that predicts cleaning needs based on infrastructure, ridership, complaints, demographics, and spatial data.
 
-Attribute Table
-Attribute
-Description
-Values
-Shelter
-If a shelter is present at the stop
-“Yes”, “No”, “N/A”
-Bus Sign
-If a bus sign is present at the stop
+🛠️ Key Pipeline Features
+Automated Data Collection: A custom Python scraper pulls recent (Jan 2025+) Google Maps Street View imagery for active bus stops, using fallback logic for obscured locations.
 
+AI Vision Classification: Uses Gemini 3.5 Flash (via Google Cloud Vertex AI) to detect and classify amenities like shelters, benches, trash cans, and ADA-compliant surfaces, outputting directly to strict JSON schemas.
 
-“Yes”, “No”, “N/A”
-GoLive
-If GoLive info is provided at the stop
-“Yes”, “No”, “N/A”
-Bench
-If bench is present at the stop
+Live ArcGIS Deployment: A Streamlit UI allows city technicians to review AI classifications and instantly sync edits to the City of Durham's live ArcGIS map server.
 
+Field Verification Protocol: Includes a manual QA/QC guide for the ~33 stops with out-of-date or obstructed camera views.
 
-“Yes”, “No”, “N/A”
-Sidewalk 
-If a sidewalk is present throughout the bus stop and surrounding area
-“Yes”, “No”, “N/A”
-Light 
-Entry captures the light condition
-“Yes”, “No”, “N/A”
-Trashcan
-If a Trashcan is present and whether it has a lid
-“Yes with lid”, “Yes”, “No”, “N/A”
-Stop surface
-Entry will be the surface type
-“Grass”, “Paved  Pads”
-ADA compliance
-Is the bus stop compliant to ADA regulations
-“Yes”, “No”, “N/A”
+📊 Analytical Workflow
+Please review the Jupyter Notebooks in the following order:
 
+1. Bayesian_Modeling.ipynb
+Develops a Bayesian hierarchical Zero-Inflated Negative Binomial (ZINB) model to predict bus stop cleaning needs.
 
-Notes:
-We need Address from Jenny
-What are ADA issues?
+Key Steps: Data prep, PyMC model fitting, convergence diagnostics, and posterior predictions.
+
+2. Results_and_Spatial_Analysis.ipynb
+Interprets model outputs and maps the results.
+
+Key Steps: Infrastructure summaries, equity/demographic analysis, hot-spot mapping, and defining high/low-priority cleaning tiers.
+
+💻 Tech Stack
+AI/ML: Google Cloud Vertex AI, Gemini 3.5 Flash, PyMC, ArviZ
+
+Geospatial: ArcGIS Python API, GeoPandas
+
+Data & UI: Python, pandas, Streamlit, Matplotlib
+
+🔒 Data Availability
+To protect internal city records and privacy, the raw datasets (complaint histories, granular ridership) are not included publicly. However, the complete code and structural data schemas are provided so the analysis can be reproduced with equivalent datasets.
